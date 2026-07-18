@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desktop-gui-agent"
+version = "0.1.0"
+description = "Cross-platform desktop perception and control primitives"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "easyocr>=1.7.1",
+  "numpy>=1.24",
+  "opencv-python>=4.8",
+  "Pillow>=10",
+  "PyAutoGUI>=0.9.54",
+  "PyQt5>=5.15",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+gui-agent = "gui_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
