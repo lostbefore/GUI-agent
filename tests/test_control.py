@@ -1,4 +1,7 @@
+import pytest
+
 from gui_agent.control import InputController
+from gui_agent.coordinates import Box
 
 
 class FakeBackend:
@@ -23,6 +26,15 @@ class FakeBackend:
     def scroll(self, amount):
         self.calls.append(("scroll", amount))
 
+    def write(self, *args, **kwargs):
+        self.calls.append(("write", args, kwargs))
+
+    def press(self, *args, **kwargs):
+        self.calls.append(("press", args, kwargs))
+
+    def hotkey(self, *args):
+        self.calls.append(("hotkey", args))
+
 
 def test_click_and_drag() -> None:
     backend = FakeBackend()
@@ -31,3 +43,61 @@ def test_click_and_drag() -> None:
     controller.drag((10, 20), (100, 200))
     assert backend.calls[0][0] == "click"
     assert backend.calls[-1][0] == "drag"
+
+
+def test_controller_configures_backend_and_click_box() -> None:
+    backend = FakeBackend()
+    controller = InputController(backend=backend, pause=0.25, failsafe=False)
+    controller.click_box(Box(10, 20, 30, 40), button="right")
+    assert backend.PAUSE == 0.25
+    assert backend.FAILSAFE is False
+    assert backend.calls[-1] == (
+        "click",
+        {"x": 20, "y": 30, "button": "right", "clicks": 1},
+    )
+
+
+def test_keyboard_and_move_operations() -> None:
+    backend = FakeBackend()
+    controller = InputController(backend=backend)
+    controller.move(50, 60, duration=0.4)
+    controller.write("hello", interval=0.1)
+    controller.press("enter", presses=2)
+    controller.hotkey("ctrl", "a")
+    assert [call[0] for call in backend.calls] == ["move", "write", "press", "hotkey"]
+
+
+def test_scroll_with_and_without_position() -> None:
+    backend = FakeBackend()
+    controller = InputController(backend=backend)
+    controller.scroll(-3)
+    controller.scroll(2, x=100, y=200)
+    assert backend.calls == [
+        ("scroll", -3),
+        ("move", (100, 200), {}),
+        ("scroll", 2),
+    ]
+
+
+def test_scroll_requires_both_coordinates() -> None:
+    controller = InputController(backend=FakeBackend())
+    with pytest.raises(ValueError, match="provided together"):
+        controller.scroll(1, x=10)
+
+
+@pytest.mark.parametrize("point", [(-1, 0), (0, -1), (800, 10), (10, 600)])
+def test_out_of_bounds_operations_are_rejected(point) -> None:
+    controller = InputController(backend=FakeBackend())
+    with pytest.raises(ValueError, match="outside"):
+        controller.click(*point)
+
+
+def test_default_backend_is_loaded_lazily(monkeypatch) -> None:
+    import pyautogui
+
+    monkeypatch.setattr(pyautogui, "PAUSE", 0)
+    monkeypatch.setattr(pyautogui, "FAILSAFE", False)
+    controller = InputController(pause=0.2, failsafe=True)
+    assert controller.backend is pyautogui
+    assert pyautogui.PAUSE == 0.2
+    assert pyautogui.FAILSAFE is True

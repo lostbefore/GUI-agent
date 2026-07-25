@@ -61,6 +61,7 @@ class ScreenCapture:
         if out_width <= 0 or out_height <= 0:
             raise ValueError("target_size dimensions must be positive")
         if (out_width, out_height) != (source_width, source_height):
+            # 缩放插值选择
             interpolation = cv2.INTER_AREA if out_width < source_width else cv2.INTER_CUBIC
             bgr = cv2.resize(bgr, (out_width, out_height), interpolation=interpolation)
 

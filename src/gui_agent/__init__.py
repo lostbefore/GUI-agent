@@ -1,8 +1,4 @@
-"""Desktop perception and control building blocks.
-
-Public objects are imported lazily so lightweight coordinate/control use does not
-load OCR and computer-vision runtimes.
-"""
+"""桌面感知与控制"""
 
 from importlib import import_module
 
@@ -35,5 +31,6 @@ def __getattr__(name: str):
     except KeyError as error:
         raise AttributeError(name) from error
     value = getattr(import_module(module_name, __name__), attribute)
+    # 首次导入缓存
     globals()[name] = value
     return value

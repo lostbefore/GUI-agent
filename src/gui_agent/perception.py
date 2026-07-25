@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import cv2
 import numpy as np
@@ -36,6 +37,7 @@ class DesktopPerception:
     @property
     def reader(self):
         if self._reader is None:
+            # 延迟加载识别
             import easyocr
 
             self._reader = easyocr.Reader(list(self.languages), gpu=self.gpu)
@@ -60,7 +62,9 @@ class DesktopPerception:
                 round(points[:, 1].max()),
             )
             elements.append(
-                UIElement(frame.mapper.box_to_screen(image_box), "text", str(text), float(confidence))
+                UIElement(
+                    frame.mapper.box_to_screen(image_box), "text", str(text), float(confidence)
+                )
             )
         return elements
 
@@ -74,6 +78,7 @@ class DesktopPerception:
         gray = cv2.cvtColor(frame.image, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 60, 160)
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 3))
+        # 连接相邻边缘
         closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=2)
         contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         image_area = frame.image.shape[0] * frame.image.shape[1]

@@ -1,0 +1,10 @@
+[model]
+backend = "transformers"
+path = "D:/Qwen-VL"
+device_map = "auto"
+dtype = "auto"
+max_new_tokens = 256
+trust_remote_code = false
+load_in_4bit = true
+compute_dtype = "bfloat16"
+max_image_pixels = 1048576

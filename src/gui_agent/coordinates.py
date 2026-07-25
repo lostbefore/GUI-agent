@@ -32,7 +32,7 @@ class Box:
     def center(self) -> tuple[int, int]:
         return ((self.left + self.right) // 2, (self.top + self.bottom) // 2)
 
-    def clamp(self, width: int, height: int) -> "Box":
+    def clamp(self, width: int, height: int) -> Box:
         return Box(
             max(0, min(self.left, width)),
             max(0, min(self.top, height)),
@@ -43,7 +43,7 @@ class Box:
 
 @dataclass(frozen=True, slots=True)
 class CoordinateMapper:
-    """Maps image pixels or normalized points to physical screen coordinates."""
+    """屏幕坐标映射"""
 
     image_width: int
     image_height: int

@@ -7,3 +7,9 @@ artifacts/
 build/
 dist/
 *.egg-info/
+data/raw/
+data/processed/
+/models/
+.env
+*.safetensors
+.coverage
