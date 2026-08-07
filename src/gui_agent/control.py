@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,6 +12,7 @@ class InputController:
     backend: Any = None
     pause: float = 0.1
     failsafe: bool = True
+    clipboard: Any = None
 
     def __post_init__(self) -> None:
         if self.backend is None:
@@ -37,7 +39,19 @@ class InputController:
         self.backend.moveTo(x, y, duration=duration)
 
     def write(self, text: str, *, interval: float = 0.03) -> None:
-        self.backend.write(text, interval=interval)
+        if text.isascii():
+            self.backend.write(text, interval=interval)
+            return
+        if self.clipboard is None:
+            import pyperclip
+
+            self.clipboard = pyperclip
+        try:
+            self.clipboard.copy(text)
+        except Exception as error:
+            raise RuntimeError("无法通过剪贴板输入中文") from error
+        modifier = "command" if platform.system() == "Darwin" else "ctrl"
+        self.backend.hotkey(modifier, "v")
 
     def press(self, key: str, *, presses: int = 1) -> None:
         self.backend.press(key, presses=presses)

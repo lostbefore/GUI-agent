@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "desktop-gui-agent"
-version = "0.1.0"
-description = "Cross-platform desktop perception and control primitives"
+version = "1.0.0"
+description = "Multimodal desktop GUI agent prototype"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,6 +14,7 @@ dependencies = [
   "opencv-python>=4.8",
   "Pillow>=10",
   "PyAutoGUI>=0.9.54",
+  "pyperclip>=1.9",
   "PyQt5>=5.15",
   "tomli>=2; python_version < '3.11'",
 ]
@@ -42,6 +43,8 @@ datasets = [
 gui-agent = "gui_agent.cli:main"
 gui-agent-data = "gui_agent.datasets.cli:main"
 gui-agent-run = "gui_agent.agent.cli:main"
+gui-agent-v1 = "gui_agent.runtime.cli:main"
+gui-agent-acceptance = "gui_agent.runtime.acceptance:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

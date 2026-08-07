@@ -1,11 +1,15 @@
-"""桌面感知与控制"""
+"""桌面智能体组件"""
 
 from importlib import import_module
 
 __all__ = [
+    "ActionExecutor",
+    "ActionPolicy",
     "Box",
     "CoordinateMapper",
     "DesktopPerception",
+    "ExecutionReport",
+    "GUIAgentRuntime",
     "InputController",
     "Point",
     "ScreenCapture",
@@ -14,6 +18,8 @@ __all__ = [
 ]
 
 _EXPORTS = {
+    "ActionExecutor": (".runtime", "ActionExecutor"),
+    "ActionPolicy": (".runtime", "ActionPolicy"),
     "Box": (".coordinates", "Box"),
     "CoordinateMapper": (".coordinates", "CoordinateMapper"),
     "Point": (".coordinates", "Point"),
@@ -22,6 +28,8 @@ _EXPORTS = {
     "UIElement": (".perception", "UIElement"),
     "ScreenCapture": (".screen", "ScreenCapture"),
     "ScreenFrame": (".screen", "ScreenFrame"),
+    "ExecutionReport": (".runtime", "ExecutionReport"),
+    "GUIAgentRuntime": (".runtime", "GUIAgentRuntime"),
 }
 
 

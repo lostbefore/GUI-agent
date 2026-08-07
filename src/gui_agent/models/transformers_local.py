@@ -102,7 +102,11 @@ class TransformersVisionModel:
         inputs = self._processor(text=[rendered], images=loaded_images or None, return_tensors="pt")
         device = next(self._model.parameters()).device
         inputs = {key: value.to(device) for key, value in inputs.items()}
-        output = self._model.generate(**inputs, max_new_tokens=self.max_new_tokens)
+        output = self._model.generate(
+            **inputs,
+            max_new_tokens=self.max_new_tokens,
+            do_sample=False,
+        )
         prompt_length = inputs["input_ids"].shape[1]
         text = self._processor.batch_decode(output[:, prompt_length:], skip_special_tokens=True)[0]
         return ModelResponse(text.strip(), self.model_path)

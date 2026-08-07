@@ -36,6 +36,14 @@ class FakeBackend:
         self.calls.append(("hotkey", args))
 
 
+class FakeClipboard:
+    def __init__(self):
+        self.text = ""
+
+    def copy(self, text):
+        self.text = text
+
+
 def test_click_and_drag() -> None:
     backend = FakeBackend()
     controller = InputController(backend=backend)
@@ -65,6 +73,26 @@ def test_keyboard_and_move_operations() -> None:
     controller.press("enter", presses=2)
     controller.hotkey("ctrl", "a")
     assert [call[0] for call in backend.calls] == ["move", "write", "press", "hotkey"]
+
+
+def test_unicode_input_uses_clipboard() -> None:
+    backend = FakeBackend()
+    clipboard = FakeClipboard()
+    controller = InputController(backend=backend, clipboard=clipboard)
+    controller.write("中文测试")
+    assert clipboard.text == "中文测试"
+    assert backend.calls == [("hotkey", ("ctrl", "v"))]
+
+
+def test_unicode_input_reports_clipboard_failure() -> None:
+    class BrokenClipboard:
+        @staticmethod
+        def copy(text):
+            raise OSError("clipboard unavailable")
+
+    controller = InputController(backend=FakeBackend(), clipboard=BrokenClipboard())
+    with pytest.raises(RuntimeError, match="剪贴板"):
+        controller.write("中文")
 
 
 def test_scroll_with_and_without_position() -> None:

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from gui_agent.models.base import VisionModel
 
-from .json_utils import parse_json_object
+from .json_utils import is_likely_truncated, parse_json_response
 
 PLANNER_SYSTEM_PROMPT = """You are a desktop task planner. Return JSON only.
 Break the request into safe, observable, atomic GUI steps. Do not invent coordinates.
-Schema: {"summary": "...", "steps": [{"id": 1, "description": "...", "status": "pending"}]}"""
+Use visible GUI controls only. Do not plan shell, terminal, or Python commands.
+Preserve explicit keyboard shortcuts and their order exactly.
+Do not replace requested hotkeys with icon clicks.
+Do not add closing or cleanup steps unless the user requests them.
+Keep descriptions concise. Use no more than four steps.
+Schema: {"summary": "...", "steps": [{"id": 1, "description": "..."}]}"""
 
 
 @dataclass(slots=True)
@@ -26,18 +32,42 @@ class Plan:
 
 
 class TaskPlanner:
-    def __init__(self, model: VisionModel, *, max_steps: int = 6) -> None:
+    def __init__(self, model: VisionModel, *, max_steps: int = 4) -> None:
         self.model = model
         self.max_steps = max_steps
+        self.last_response = ""
+        self.used_fallback = False
 
-    def plan(self, goal: str) -> Plan:
+    def plan(
+        self,
+        goal: str,
+        screenshot: str | Path | None = None,
+        screen_context: str = "",
+    ) -> Plan:
         if not goal.strip():
             raise ValueError("goal must not be empty")
+        prompt = f"User goal: {goal}\nMaximum steps: {self.max_steps}"
+        if screen_context:
+            prompt += f"\nCurrent screen elements:\n{screen_context}"
         response = self.model.generate(
-            f"User goal: {goal}\nMaximum steps: {self.max_steps}",
+            prompt,
+            [screenshot] if screenshot else (),
             system_prompt=PLANNER_SYSTEM_PROMPT,
         )
-        payload = parse_json_object(response.text)
+        self.last_response = response.text
+        self.used_fallback = False
+        if is_likely_truncated(response.text):
+            self.used_fallback = True
+            self.last_response += "\n\n--- fallback ---\n检测到截断并使用单步计划"
+            return Plan(goal, "使用用户目标继续执行", [PlanStep(1, goal)])
+        try:
+            payload, corrected = parse_json_response(self.model, response.text)
+        except (TypeError, ValueError):
+            self.used_fallback = True
+            self.last_response += "\n\n--- fallback ---\n使用单步计划"
+            return Plan(goal, "使用用户目标继续执行", [PlanStep(1, goal)])
+        if corrected is not None:
+            self.last_response += f"\n\n--- corrected ---\n{corrected}"
         raw_steps = payload.get("steps")
         if not isinstance(raw_steps, list) or not raw_steps:
             raise ValueError("Planner response must contain a non-empty steps list")
