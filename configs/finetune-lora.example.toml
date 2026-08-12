@@ -1,0 +1,20 @@
+[finetune]
+model_path = "D:/Qwen2.5-VL-3B-Instruct"
+train_file = "data/finetune/train.jsonl"
+validation_file = "data/finetune/validation.jsonl"
+output_dir = "models/gui-agent-lora"
+
+# 8GB ????
+lora_rank = 8
+lora_alpha = 16
+lora_dropout = 0.05
+target_modules = ["q_proj", "v_proj"]
+learning_rate = 0.0001
+max_steps = 40
+batch_size = 1
+gradient_accumulation_steps = 8
+max_length = 1024
+eval_max_tokens = 160
+logging_steps = 5
+save_steps = 20
+eval_steps = 20

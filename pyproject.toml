@@ -38,6 +38,12 @@ datasets = [
   "datasets>=3,<5",
   "huggingface-hub>=0.27",
 ]
+finetune = [
+  "accelerate>=1",
+  "bitsandbytes>=0.43",
+  "peft>=0.14",
+  "transformers>=4.49",
+]
 
 [project.scripts]
 gui-agent = "gui_agent.cli:main"
@@ -45,6 +51,7 @@ gui-agent-data = "gui_agent.datasets.cli:main"
 gui-agent-run = "gui_agent.agent.cli:main"
 gui-agent-v1 = "gui_agent.runtime.cli:main"
 gui-agent-acceptance = "gui_agent.runtime.acceptance:main"
+gui-agent-finetune = "gui_agent.finetune.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

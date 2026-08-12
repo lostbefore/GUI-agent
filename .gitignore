@@ -10,6 +10,7 @@ dist/
 *.egg-info/
 data/raw/
 data/processed/
+data/finetune/
 /models/
 .env
 *.safetensors
