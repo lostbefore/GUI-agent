@@ -1,26 +1,41 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 
 class ProgressRecorder:
-    """进度记录器"""
+    """Structured progress and runtime log writer."""
 
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, log_path: str | Path | None = None) -> None:
         self.path = Path(path)
+        self.log_path = Path(log_path) if log_path else self.path.with_suffix(".log")
+        self._logger: logging.Logger | None = None
+
+    @property
+    def logger(self) -> logging.Logger:
+        if self._logger is None:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            logger = logging.getLogger(f"gui_agent.runtime.{self.log_path.resolve()}")
+            logger.setLevel(logging.INFO)
+            logger.propagate = False
+            if not logger.handlers:
+                handler = logging.FileHandler(self.log_path, encoding="utf-8")
+                handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+                logger.addHandler(handler)
+            self._logger = logger
+        return self._logger
 
     def record(self, stage: str, **details: Any) -> dict[str, Any]:
-        event = {
-            "time": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "stage": stage,
-            **details,
-        }
+        event = {"time": datetime.now().astimezone().isoformat(timespec="seconds"), "stage": stage, **details}
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        serialized = json.dumps(event, ensure_ascii=False)
         with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+            handle.write(serialized + "\n")
+        self.logger.info(serialized)
         return event
 
 
@@ -28,8 +43,7 @@ def read_latest_progress(path: str | Path) -> dict[str, Any] | None:
     source = Path(path)
     if not source.is_file():
         return None
-    lines = source.read_text(encoding="utf-8").splitlines()
-    for line in reversed(lines):
+    for line in reversed(source.read_text(encoding="utf-8").splitlines()):
         try:
             value = json.loads(line)
         except json.JSONDecodeError:
@@ -41,32 +55,33 @@ def read_latest_progress(path: str | Path) -> dict[str, Any] | None:
 
 def format_progress(event: dict[str, Any] | None) -> str:
     if not event:
-        return "GUI Agent\n正在等待运行"
-    stage = str(event.get("stage", ""))
-    index = event.get("index")
-    action = event.get("action")
-    status = event.get("status")
-    message = event.get("message")
+        return "GUI Agent\n\u7b49\u5f85\u8fd0\u884c"
     labels = {
-        "starting": "正在启动",
-        "observing": "正在截图和识别",
-        "observed": "屏幕识别完成",
-        "planning": "正在生成任务计划",
-        "planned": "任务计划已生成",
-        "deciding": "正在生成下一步动作",
-        "decision_ready": "动作决策已生成",
-        "action_finished": "桌面动作执行完成",
-        "finished": "任务运行结束",
-        "error": "任务运行出错",
-        "interrupted": "任务已停止",
+        "starting": "Starting",
+        "observing": "Capturing screen",
+        "observed": "Screen captured",
+        "perception_finished": "Perception complete",
+        "planning": "Planning task",
+        "planned": "Plan ready",
+        "deciding": "Choosing action",
+        "decision_ready": "Action ready",
+        "action_finished": "Action complete",
+        "retrying": "Retrying after failure",
+        "state_checked": "Screen state checked",
+        "finished": "Run finished",
+        "error": "Run failed",
+        "interrupted": "Run interrupted",
     }
-    parts = ["GUI Agent", labels.get(stage, stage or "运行中")]
-    if index is not None:
-        parts[-1] += f"  第 {index} 步"
-    if action:
-        parts.append(f"动作  {action}")
-    if status:
-        parts.append(f"状态  {status}")
-    if message:
-        parts.append(str(message))
+    stage = str(event.get("stage", ""))
+    parts = ["GUI Agent", labels.get(stage, stage or "Running")]
+    if event.get("index") is not None:
+        parts[-1] += f"  \u7b2c{event['index']}\u6b65"
+    if event.get("attempt", 0):
+        parts[-1] += f"  \u5c1d\u8bd5{event['attempt']}"
+    if event.get("action"):
+        parts.append(f"action: {event['action']}")
+    if event.get("status"):
+        parts.append(f"status: {event['status']}")
+    if event.get("message"):
+        parts.append(str(event["message"]))
     return "\n".join(parts)

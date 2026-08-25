@@ -31,7 +31,6 @@ tests\test_acceptance.py
 tests\test_progress.py
 tests\test_monitor.py
 docs\week4-basic-task-report.md
-docs\week4-real-desktop-acceptance.md
 ```
 
 ## 第 3 周交付物
@@ -79,7 +78,7 @@ GUI-agent\
 | 第 2 周 | 桌面感知与控制核心模块开发 | 完整模块代码、单元测试报告 | 已完成 |
 | 第 3 周 | 公开 GUI 数据集处理与基础 Agent 框架搭建 | 数据集预处理脚本、基础 Agent 框架代码 | 已完成 |
 | 第 4 周 | 端到端 GUI 任务执行系统集成 | 系统原型 v1.0、基础任务测试报告 | 已完成 |
-| 第 5 周 | 多模态大模型 LoRA 微调与能力提升 | 微调权重、微调效果对比报告 | 待开发 |
+| 第 5 周 | 多模态大模型 LoRA 微调与能力提升 | 微调权重、微调效果对比报告 | 已完成 |
 | 第 6 周 | 高级功能与系统鲁棒性优化 | 系统 v2.0、鲁棒性测试报告 | 待开发 |
 | 第 7 周 | 系统全面评估与性能分析 | 全面评估报告、性能可视化图表 | 待开发 |
 | 第 8 周 | 项目总结与求职作品集整合 | 完整代码仓库、技术报告、演示视频 | 待开发 |
@@ -348,7 +347,7 @@ python -m gui_agent.runtime.acceptance --task send-message --message "GUI Agent 
 python -m gui_agent.runtime.acceptance --task close-app --execute
 ```
 
-每项任务都有 5 秒准备时间。搜索前需让浏览器保持前台，发送前需打开自己的测试会话，关闭前需打开无未保存内容的测试应用。完整验收步骤见 [`docs/week4-real-desktop-acceptance.md`](docs/week4-real-desktop-acceptance.md)。
+每项任务都有 5 秒准备时间。搜索前需让浏览器保持前台，发送前需打开自己的测试会话，关闭前需打开无未保存内容的测试应用。完整验收步骤见 [`docs/week4-basic-task-report.md`](docs/week4-basic-task-report.md)。
 
 运行记录保存在：
 
@@ -390,3 +389,20 @@ Ruff checks passed
 ```
 
 自动测试使用模拟输入后端，不会打开真实应用。第 4 周测试结果和真实桌面验收方法见 [`docs/week4-basic-task-report.md`](docs/week4-basic-task-report.md)。
+
+## 第六周：高级功能与系统鲁棒性优化
+
+已交付系统 v2.0 和鲁棒性测试报告。
+
+| 交付物 | 路径 |
+|---|---|
+| 系统 v2.0 配置 | [`configs/agent-v2.example.toml`](configs/agent-v2.example.toml) |
+| 鲁棒性测试报告 | [`docs/week6-robustness-test-report.md`](docs/week6-robustness-test-report.md) |
+| v2 使用说明 | [`docs/week6-usage-guide.md`](docs/week6-usage-guide.md) |
+| 重试与感知测试 | [`tests/test_robustness.py`](tests/test_robustness.py) |
+
+实现内容：复杂任务分步规划、失败后重新感知与重试、屏幕变化检测、OCR/UI 结果去重、结构化运行日志。
+
+## Week 7 evaluation
+
+- 20-task benchmark: data/week7/benchmark-tasks.json`n- Evaluation CLI: src/gui_agent/evaluation/cli.py`n- System evaluation report: week7-system-evaluation-report.md`n- Performance charts: rtifacts/week7/charts/`n

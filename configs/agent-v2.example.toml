@@ -1,0 +1,28 @@
+[model]
+backend = "transformers"
+path = "D:/Qwen2.5-VL-3B-Instruct"
+device_map = "auto"
+dtype = "auto"
+max_new_tokens = 256
+trust_remote_code = false
+load_in_4bit = true
+compute_dtype = "bfloat16"
+max_image_pixels = 589824
+
+[runtime]
+artifact_dir = "artifacts/runtime-v2"
+max_actions = 24
+planner_max_steps = 8
+max_retries = 2
+retry_delay = 1.0
+screen_change_threshold = 3.0
+capture_scale = 1.0
+max_screen_pixels = 589824
+analyze_screen = true
+max_elements = 100
+action_delay = 0.5
+start_delay = 5.0
+input_pause = 0.1
+max_wait = 10.0
+block_terminal_text = true
+max_text_length = 2000

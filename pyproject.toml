@@ -25,6 +25,7 @@ dev = [
   "pytest-cov>=7",
   "pytest-html>=4",
   "ruff>=0.5",
+  "matplotlib>=3.8",
 ]
 agent = [
   "accelerate>=1",
@@ -52,6 +53,7 @@ gui-agent-run = "gui_agent.agent.cli:main"
 gui-agent-v1 = "gui_agent.runtime.cli:main"
 gui-agent-acceptance = "gui_agent.runtime.acceptance:main"
 gui-agent-finetune = "gui_agent.finetune.cli:main"
+gui-agent-evaluate = "gui_agent.evaluation.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

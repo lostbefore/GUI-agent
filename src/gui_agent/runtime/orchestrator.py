@@ -16,6 +16,7 @@ from gui_agent.screen import ScreenFrame
 
 from .executor import ActionExecutor, ActionResult
 from .progress import ProgressRecorder
+from .robustness import RetryPolicy, ScreenStateChecker
 from .safety import ActionPolicy, UnsafeActionError
 
 
@@ -35,6 +36,7 @@ class ExecutionEvent:
     annotated: str | None
     decision: AgentDecision
     result: ActionResult
+    attempt: int = 1
 
 
 @dataclass(slots=True)
@@ -48,7 +50,7 @@ class ExecutionReport:
 
 
 class GUIAgentRuntime:
-    """桌面执行闭环"""
+    """Desktop execution loop."""
 
     def __init__(
         self,
@@ -63,6 +65,9 @@ class GUIAgentRuntime:
         analyze_screen: bool = True,
         max_elements: int = 80,
         action_delay: float = 0.5,
+        max_retries: int = 0,
+        retry_delay: float = 1.0,
+        state_checker: ScreenStateChecker | None = None,
         action_policy: ActionPolicy | None = None,
         progress: ProgressRecorder | None = None,
         sleeper: Callable[[float], None] = time.sleep,
@@ -87,6 +92,8 @@ class GUIAgentRuntime:
         self.analyze_screen = analyze_screen
         self.max_elements = max_elements
         self.action_delay = action_delay
+        self.retry_policy = RetryPolicy(max_retries, retry_delay)
+        self.state_checker = state_checker or ScreenStateChecker()
         self.action_policy = action_policy or ActionPolicy()
         self.progress = progress or ProgressRecorder(self.artifact_dir / "progress.jsonl")
         self.sleeper = sleeper
@@ -95,10 +102,7 @@ class GUIAgentRuntime:
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
         path = self.artifact_dir / "report.json"
         report.report_file = str(path)
-        path.write_text(
-            json.dumps(asdict(report), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        path.write_text(json.dumps(asdict(report), ensure_ascii=False, indent=2), encoding="utf-8")
         self.progress.record("finished", status=report.status, report_file=str(path))
         return report
 
@@ -119,56 +123,35 @@ class GUIAgentRuntime:
         out_height = max(1, round(height * ratio))
         image = cv2.resize(frame.image, (out_width, out_height), interpolation=cv2.INTER_AREA)
         mapper = frame.mapper
-        fitted_mapper = CoordinateMapper(
-            out_width,
-            out_height,
-            mapper.screen_width,
-            mapper.screen_height,
-            mapper.origin_x,
-            mapper.origin_y,
-        )
+        fitted_mapper = CoordinateMapper(out_width, out_height, mapper.screen_width, mapper.screen_height, mapper.origin_x, mapper.origin_y)
         return ScreenFrame(image, fitted_mapper)
 
     @staticmethod
     def _image_box(box: Box, mapper: CoordinateMapper) -> list[int]:
-        return [
-            round((box.left - mapper.origin_x) / mapper.scale_x),
-            round((box.top - mapper.origin_y) / mapper.scale_y),
-            round((box.right - mapper.origin_x) / mapper.scale_x),
-            round((box.bottom - mapper.origin_y) / mapper.scale_y),
-        ]
+        return [round((box.left - mapper.origin_x) / mapper.scale_x), round((box.top - mapper.origin_y) / mapper.scale_y), round((box.right - mapper.origin_x) / mapper.scale_x), round((box.bottom - mapper.origin_y) / mapper.scale_y)]
 
     def _screen_context(self, frame: ScreenFrame, elements: Iterable[UIElement]) -> str:
         payload = []
         for element in list(elements)[: self.max_elements]:
-            payload.append(
-                {
-                    "kind": element.kind,
-                    "text": element.text,
-                    "confidence": round(element.confidence, 3),
-                    "box": self._image_box(element.box, frame.mapper),
-                }
-            )
+            payload.append({"kind": element.kind, "text": element.text, "confidence": round(element.confidence, 3), "box": self._image_box(element.box, frame.mapper)})
         return json.dumps(payload, ensure_ascii=False)
 
-    def observe(self, index: int) -> Observation:
+    def observe(self, index: int, *, attempt: int = 0) -> Observation:
         frame = self._fit_frame(self.perception.capture(scale=self.capture_scale))
         elements = self.perception.analyze(frame) if self.analyze_screen else []
+        metrics = getattr(self.perception, "last_metrics", None)
+        if isinstance(metrics, dict):
+            self.progress.record("perception_finished", index=index, attempt=attempt, **metrics)
         self.artifact_dir.mkdir(parents=True, exist_ok=True)
-        screenshot = self.artifact_dir / f"step-{index:02d}.png"
+        suffix = "" if not attempt else f"-retry-{attempt}"
+        screenshot = self.artifact_dir / f"step-{index:02d}{suffix}.png"
         if not cv2.imwrite(str(screenshot), frame.image):
             raise OSError(f"Could not write screenshot to {screenshot}")
         annotated: Path | None = None
         if elements:
-            annotated = self.artifact_dir / f"step-{index:02d}-annotated.png"
+            annotated = self.artifact_dir / f"step-{index:02d}{suffix}-annotated.png"
             self.perception.save_annotated(frame, elements, annotated)
-        return Observation(
-            frame,
-            str(screenshot),
-            str(annotated) if annotated else None,
-            elements,
-            self._screen_context(frame, elements),
-        )
+        return Observation(frame, str(screenshot), str(annotated) if annotated else None, elements, self._screen_context(frame, elements))
 
     @staticmethod
     def _update_plan(plan: Plan, decision: AgentDecision, result: ActionResult) -> None:
@@ -187,10 +170,42 @@ class GUIAgentRuntime:
                 step.status = "completed"
                 return
 
+    @staticmethod
+    def _response_name(index: int, attempt: int) -> str:
+        return f"step-{index:02d}-response.txt" if attempt == 1 else f"step-{index:02d}-retry-{attempt - 1}-response.txt"
+
+    def _decide(self, goal: str, plan: Plan, observation: Observation, history: list[dict[str, Any]], index: int, attempt: int) -> AgentDecision:
+        self.progress.record("deciding", index=index, attempt=attempt)
+        try:
+            decision = self.agent.decide(goal, plan, observation.screenshot, screen_context=observation.context, history=history)
+        except Exception:
+            self._save_model_response(self._response_name(index, attempt), self.agent)
+            self.progress.record("error", index=index, attempt=attempt, message="action decision failed")
+            raise
+        self._save_model_response(self._response_name(index, attempt), self.agent)
+        self.progress.record("decision_ready", index=index, attempt=attempt, action=decision.action)
+        return decision
+
+    def _run_action(self, decision: AgentDecision, observation: Observation) -> tuple[ActionResult, bool]:
+        try:
+            self.action_policy.validate(decision)
+        except UnsafeActionError as error:
+            return ActionResult(decision.action, False, f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}", decision.parameters or {}), True
+        return self.executor.execute(decision, observation.frame.mapper), False
+
+    @staticmethod
+    def _history_event(index: int, attempt: int, decision: AgentDecision, result: ActionResult) -> dict[str, Any]:
+        return {"index": index, "attempt": attempt, "action": decision.action, "reason": decision.reason, "parameters": decision.parameters or {}, "success": result.success, "message": result.message}
+
+    def _record_change(self, before: Observation, after: Observation, index: int, attempt: int) -> None:
+        change = self.state_checker.compare(before.frame, after.frame)
+        self.progress.record("state_checked", index=index, attempt=attempt, changed=change.changed, difference=round(change.score, 3))
+
     def run(self, goal: str, *, execute: bool = False) -> ExecutionReport:
         if not goal.strip():
             raise ValueError("goal must not be empty")
-        self.progress.record("starting", goal=goal, mode="execute" if execute else "preview")
+        mode = "execute" if execute else "preview"
+        self.progress.record("starting", goal=goal, mode=mode)
         self.progress.record("observing", index=0)
         observation = self.observe(0)
         self.progress.record("observed", index=0, screenshot=observation.screenshot)
@@ -198,118 +213,61 @@ class GUIAgentRuntime:
         try:
             plan = self.agent.plan(goal, observation.screenshot, observation.context)
         except Exception:
-            self._save_model_response(
-                "plan-response.txt",
-                getattr(self.agent, "planner", None),
-            )
-            self.progress.record("error", message="任务计划生成失败")
+            self._save_model_response("plan-response.txt", getattr(self.agent, "planner", None))
+            self.progress.record("error", message="task planning failed")
             raise
         self._save_model_response("plan-response.txt", getattr(self.agent, "planner", None))
-        self.progress.record(
-            "planned",
-            steps=len(plan.steps),
-            fallback=bool(getattr(getattr(self.agent, "planner", None), "used_fallback", False)),
-        )
+        self.progress.record("planned", steps=len(plan.steps), fallback=bool(getattr(getattr(self.agent, "planner", None), "used_fallback", False)))
         history: list[dict[str, Any]] = []
         events: list[ExecutionEvent] = []
 
         if not execute:
-            self.progress.record("deciding", index=1)
-            try:
-                decision = self.agent.decide(
-                    goal,
-                    plan,
-                    observation.screenshot,
-                    screen_context=observation.context,
-                    history=history,
-                )
-            except Exception:
-                self._save_model_response("step-01-response.txt", self.agent)
-                self.progress.record("error", index=1, message="动作决策生成失败")
-                raise
-            self._save_model_response("step-01-response.txt", self.agent)
-            self.progress.record("decision_ready", index=1, action=decision.action)
+            decision = self._decide(goal, plan, observation, history, 1, 1)
             try:
                 self.action_policy.validate(decision)
             except UnsafeActionError as error:
-                result = ActionResult(
-                    decision.action,
-                    False,
-                    f"安全策略拒绝动作: {error}",
-                    decision.parameters or {},
-                )
+                result = ActionResult(decision.action, False, f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}", decision.parameters or {})
                 status = "blocked"
             else:
-                result = ActionResult(decision.action, True, "预览完成", decision.parameters or {})
+                result = ActionResult(decision.action, True, "preview complete", decision.parameters or {})
                 status = "preview"
-            events.append(
-                ExecutionEvent(1, observation.screenshot, observation.annotated, decision, result)
-            )
+            events.append(ExecutionEvent(1, observation.screenshot, observation.annotated, decision, result))
             return self._save_report(ExecutionReport(goal, "preview", status, plan, events))
 
         status = "limit_reached"
         for index in range(1, self.max_actions + 1):
             if index > 1:
+                previous_observation = observation
                 self.progress.record("observing", index=index - 1)
                 observation = self.observe(index - 1)
-                self.progress.record(
-                    "observed",
-                    index=index - 1,
-                    screenshot=observation.screenshot,
-                )
-            self.progress.record("deciding", index=index)
-            try:
-                decision = self.agent.decide(
-                    goal,
-                    plan,
-                    observation.screenshot,
-                    screen_context=observation.context,
-                    history=history,
-                )
-            except Exception:
-                self._save_model_response(f"step-{index:02d}-response.txt", self.agent)
-                self.progress.record("error", index=index, message="动作决策生成失败")
-                raise
-            self._save_model_response(f"step-{index:02d}-response.txt", self.agent)
-            self.progress.record("decision_ready", index=index, action=decision.action)
-            try:
-                self.action_policy.validate(decision)
-            except UnsafeActionError as error:
-                result = ActionResult(
-                    decision.action,
-                    False,
-                    f"安全策略拒绝动作: {error}",
-                    decision.parameters or {},
-                )
-                blocked = True
-            else:
-                result = self.executor.execute(decision, observation.frame.mapper)
-                blocked = False
-            self._update_plan(plan, decision, result)
-            events.append(
-                ExecutionEvent(
-                    index, observation.screenshot, observation.annotated, decision, result
-                )
-            )
-            history.append(
-                {
-                    "index": index,
-                    "action": decision.action,
-                    "reason": decision.reason,
-                    "parameters": decision.parameters or {},
-                    "success": result.success,
-                    "message": result.message,
-                }
-            )
-            self.progress.record(
-                "action_finished",
-                index=index,
-                action=decision.action,
-                success=result.success,
-                message=result.message,
-            )
+                self.progress.record("observed", index=index - 1, screenshot=observation.screenshot)
+                self._record_change(previous_observation, observation, index - 1, 0)
+            attempt = 1
+            while True:
+                decision = self._decide(goal, plan, observation, history, index, attempt)
+                result, blocked = self._run_action(decision, observation)
+                events.append(ExecutionEvent(index, observation.screenshot, observation.annotated, decision, result, attempt))
+                history.append(self._history_event(index, attempt, decision, result))
+                self.progress.record("action_finished", index=index, attempt=attempt, action=decision.action, success=result.success, message=result.message)
+                if result.success:
+                    self._update_plan(plan, decision, result)
+                    break
+                if blocked:
+                    status = "blocked"
+                    break
+                if not self.retry_policy.should_retry(decision, result, attempt):
+                    status = "failed"
+                    break
+                self.progress.record("retrying", index=index, attempt=attempt + 1, previous_action=decision.action, reason=result.message)
+                if self.retry_policy.retry_delay:
+                    self.sleeper(self.retry_policy.retry_delay)
+                previous_observation = observation
+                self.progress.record("observing", index=index, attempt=attempt)
+                observation = self.observe(index, attempt=attempt)
+                self.progress.record("observed", index=index, attempt=attempt, screenshot=observation.screenshot)
+                self._record_change(previous_observation, observation, index, attempt)
+                attempt += 1
             if not result.success:
-                status = "blocked" if blocked else "failed"
                 break
             if decision.action == "finish":
                 status = "completed"

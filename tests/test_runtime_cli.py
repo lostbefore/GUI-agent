@@ -10,7 +10,7 @@ def install_fakes(monkeypatch, status="preview"):
 
     monkeypatch.setattr(runtime_cli, "load_config", lambda path: {"runtime": {"max_actions": 4}})
     monkeypatch.setattr(runtime_cli, "build_model", lambda config: "model")
-    monkeypatch.setattr(runtime_cli, "DesktopAgent", lambda model: "agent")
+    monkeypatch.setattr(runtime_cli, "DesktopAgent", lambda model, planner=None: "agent")
     monkeypatch.setattr(runtime_cli, "DesktopPerception", lambda **kwargs: "perception")
     monkeypatch.setattr(runtime_cli, "InputController", lambda **kwargs: "controller")
     monkeypatch.setattr(runtime_cli, "ActionExecutor", lambda controller, **kwargs: "executor")

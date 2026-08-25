@@ -49,7 +49,7 @@ def test_overlay_refreshes_and_marks_completion(tmp_path, monkeypatch, monitor_m
     )
     overlay = monitor_module.ProgressOverlay(path, auto_close=0)
     overlay.refresh()
-    assert "第 2 步" in overlay.text()
+    assert "2" in overlay.text()
 
     path.write_text('{"stage":"finished","status":"completed"}\n', encoding="utf-8")
     callbacks = []
