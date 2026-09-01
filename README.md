@@ -22,21 +22,6 @@ GUI-agent/
 - 本地 Transformers、OpenAI 兼容 API、Qwen2.5-VL LoRA 微调接口。
 - 浏览器搜索、候选网页筛选、页面信息采集和可追溯运行记录。
 
-## 归档内容
-
-| 内容 | 位置 |
-|---|---|
-| 八周结项报告 | [old/项目结项报告.md](old/项目结项报告.md) |
-| 第四周基础任务报告 | [old/docs/week4-basic-task-report.md](old/docs/week4-basic-task-report.md) |
-| 第五周微调报告 | [old/docs/week5-finetune-comparison-report.md](old/docs/week5-finetune-comparison-report.md) |
-| 第六周鲁棒性报告 | [old/docs/week6-robustness-test-report.md](old/docs/week6-robustness-test-report.md) |
-| 第七周系统评估报告 | [old/week7-system-evaluation-report.md](old/week7-system-evaluation-report.md) |
-| 第八周 Demo 指南 | [old/docs/week8-demo-guide.md](old/docs/week8-demo-guide.md) |
-| 结项报告图片 | [old/assets/final-report/](old/assets/final-report/) |
-| 公开数据与微调数据 | `old/data/` |
-| LoRA 适配器与压缩交付物 | `old/models/`、`old/deliverables/` |
-| 自动化测试 | `old/tests/` |
-| 截图、日志与评估图表 | `old/artifacts/` |
 
 ## 环境安装
 
