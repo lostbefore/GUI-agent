@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         executor = ActionExecutor(controller, max_wait=float(runtime_config.get("max_wait", 10.0)))
         artifact_dir = _artifact_dir(
-            _value(args, runtime_config, "artifact_dir", "artifacts/runtime"), args.run_name
+            _value(args, runtime_config, "artifact_dir", "old/artifacts/runtime"), args.run_name
         )
         progress = ProgressRecorder(artifact_dir / "progress.jsonl")
         runtime = GUIAgentRuntime(

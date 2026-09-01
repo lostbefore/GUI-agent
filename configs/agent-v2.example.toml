@@ -10,7 +10,7 @@ compute_dtype = "bfloat16"
 max_image_pixels = 589824
 
 [runtime]
-artifact_dir = "artifacts/runtime-v2"
+artifact_dir = "old/artifacts/runtime-v2"
 max_actions = 24
 planner_max_steps = 8
 max_retries = 2

@@ -10,7 +10,7 @@ compute_dtype = "bfloat16"
 max_image_pixels = 589824
 
 [runtime]
-artifact_dir = "artifacts/runtime"
+artifact_dir = "old/artifacts/runtime"
 max_actions = 12
 capture_scale = 1.0
 max_screen_pixels = 589824

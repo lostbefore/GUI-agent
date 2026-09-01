@@ -26,7 +26,7 @@ if (-not (Test-Path -LiteralPath $Config)) { throw "配置不存在: $Config" }
 if ($StartDelay -lt 0) { throw "等待时间不能为负数" }
 
 $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$OutputDir = Join-Path $Root "artifacts\demo-tests\$Stamp"
+$OutputDir = Join-Path $Root "old\artifacts\demo-tests\$Stamp"
 $TempDir = Join-Path $OutputDir "pytest-tmp"
 $AcceptanceDir = Join-Path $OutputDir "acceptance"
 $ModelRunName = "demo-preview-$Stamp"
@@ -62,10 +62,10 @@ try {
     if (-not $SkipUnit) {
         Invoke-Phase "自动化测试" {
             New-Item -ItemType Directory -Force $TempDir | Out-Null
-            Invoke-PythonCommand @("-m", "pytest", "-q", "--basetemp=$TempDir", "-p", "no:cacheprovider")
+            Invoke-PythonCommand @("-m", "pytest", "-q", "old\tests", "--basetemp=$TempDir", "-p", "no:cacheprovider")
         }
         Invoke-Phase "静态检查" {
-            Invoke-PythonCommand @("-m", "ruff", "check", "--no-cache", "src", "tests")
+            Invoke-PythonCommand @("-m", "ruff", "check", "--no-cache", "src", "old\tests")
         }
     }
 
@@ -115,7 +115,7 @@ finally {
     [pscustomobject]@{
         started_at = $Stamp
         output_dir = $OutputDir
-        model_artifact_dir = (Join-Path $Root "artifacts\runtime-v2\$ModelRunName")
+        model_artifact_dir = (Join-Path $Root "old\artifacts\runtime-v2\$ModelRunName")
         results = $Results
     } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $OutputDir "summary.json")
     if (Test-Path -LiteralPath $TempDir) { Remove-Item -LiteralPath $TempDir -Recurse -Force }

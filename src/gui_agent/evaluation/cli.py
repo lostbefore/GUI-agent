@@ -25,9 +25,9 @@ def build_parser() -> argparse.ArgumentParser:
         ("summarize", "summarize existing benchmark records"),
     ):
         command = commands.add_parser(name, help=help_text)
-        command.add_argument("--tasks", default="data/week7/benchmark-tasks.json")
-        command.add_argument("--output-dir", default="artifacts/week7")
-        command.add_argument("--report", default="week7-system-evaluation-report.md")
+        command.add_argument("--tasks", default="old/data/week7/benchmark-tasks.json")
+        command.add_argument("--output-dir", default="old/artifacts/week7")
+        command.add_argument("--report", default="old/week7-system-evaluation-report.md")
     commands.choices["summarize"].add_argument("--records", required=True)
     return parser
 

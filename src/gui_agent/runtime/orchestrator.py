@@ -58,7 +58,7 @@ class GUIAgentRuntime:
         perception: DesktopPerception,
         executor: ActionExecutor,
         *,
-        artifact_dir: str | Path = "artifacts/runtime",
+        artifact_dir: str | Path = "old/artifacts/runtime",
         max_actions: int = 12,
         capture_scale: float = 1.0,
         max_screen_pixels: int = 1_048_576,

@@ -1,82 +1,125 @@
 # 基于多模态大模型的桌面 GUI 智能体开发与优化
 
-桌面 GUI 智能体原型，覆盖屏幕感知、OCR 与 UI 定位、鼠标键盘控制、公开数据集预处理、多模态任务规划、模型调用、LoRA 微调、执行闭环、鲁棒性优化与系统评估。
+Windows 多模态桌面 GUI 智能体原型。根目录仅保留运行所需代码、配置、脚本和本说明；八周开发过程中产生的数据、权重、测试、报告、图表与运行记录统一归档至 `old/`。
 
-## 项目结构
+## 当前目录
 
-    src/gui_agent/
-    ├── screen.py          截图与分辨率适配
-    ├── perception.py      OCR 与界面识别
-    ├── control.py         鼠标键盘控制
-    ├── coordinates.py     坐标映射
-    ├── datasets/          数据集预处理
-    ├── agent/             任务规划与决策
-    ├── models/            本地与 API 模型
-    ├── finetune/          LoRA 微调
-    ├── runtime/           执行闭环与安全策略
-    └── evaluation/        任务评估与图表
+```text
+GUI-agent/
+├── src/                  核心系统代码
+├── configs/              Agent 与 LoRA 示例配置
+├── scripts/              一键 Demo 脚本
+├── old/                  历史数据、测试、报告、权重和运行产物
+├── pyproject.toml        依赖与命令行入口
+├── .gitignore            Git 忽略规则
+└── README.md             项目说明
+```
 
-    configs/               示例配置
-    data/week7/            20 项评估任务
-    tests/                 自动化测试
-    docs/                  阶段说明与报告
+## 核心能力
 
-## 阶段交付物
+- 截图、OCR、UI 边界框、坐标映射和鼠标键盘控制。
+- 任务规划、模型决策、动作 JSON 校验、安全策略与执行反馈闭环。
+- 本地 Transformers、OpenAI 兼容 API、Qwen2.5-VL LoRA 微调接口。
+- 浏览器搜索、候选网页筛选、页面信息采集和可追溯运行记录。
 
-| 周次 | 交付物 | 路径 |
-|---|---|---|
-| 第 2 周 | 感知与控制代码、单元测试 | src/gui_agent/、tests/ |
-| 第 3 周 | 数据预处理、基础 Agent | src/gui_agent/datasets/、src/gui_agent/agent/、src/gui_agent/models/ |
-| 第 4 周 | 系统原型、基础任务报告 | src/gui_agent/runtime/、docs/week4-basic-task-report.md |
-| 第 5 周 | LoRA 微调、对比报告 | src/gui_agent/finetune/、week5-finetune-analysis-report.md |
-| 第 6 周 | 系统 v2.0、鲁棒性报告 | configs/agent-v2.example.toml、week6-robustness-test-report.md |
-| 第 7 周 | 全面评估、性能图表 | src/gui_agent/evaluation/、week7-system-evaluation-report.md、artifacts/week7/charts/ |
-| 第 8 周 | 工程整理与作品集整合 | 进行中 |
+## 归档内容
 
-## 安装
+| 内容 | 位置 |
+|---|---|
+| 八周结项报告 | [old/项目结项报告.md](old/项目结项报告.md) |
+| 第四周基础任务报告 | [old/docs/week4-basic-task-report.md](old/docs/week4-basic-task-report.md) |
+| 第五周微调报告 | [old/docs/week5-finetune-comparison-report.md](old/docs/week5-finetune-comparison-report.md) |
+| 第六周鲁棒性报告 | [old/docs/week6-robustness-test-report.md](old/docs/week6-robustness-test-report.md) |
+| 第七周系统评估报告 | [old/week7-system-evaluation-report.md](old/week7-system-evaluation-report.md) |
+| 第八周 Demo 指南 | [old/docs/week8-demo-guide.md](old/docs/week8-demo-guide.md) |
+| 结项报告图片 | [old/assets/final-report/](old/assets/final-report/) |
+| 公开数据与微调数据 | `old/data/` |
+| LoRA 适配器与压缩交付物 | `old/models/`、`old/deliverables/` |
+| 自动化测试 | `old/tests/` |
+| 截图、日志与评估图表 | `old/artifacts/` |
 
-    conda activate gui-agent
-    Set-Location D:DesktopGUI-agent
-    $env:PYTHONPATH='src'
-    python -m pip install -e ".[dev]"
+## 环境安装
 
-按需安装模型、数据集和微调依赖：
+```powershell
+conda activate gui-agent
+Set-Location D:\Desktop\GUI-agent
+$env:PYTHONPATH = 'src'
+python -m pip install -e ".[dev]"
+```
 
-    python -m pip install -e ".[agent,datasets,finetune]"
+如需数据预处理、本地模型或 LoRA 微调：
+
+```powershell
+python -m pip install -e ".[agent,datasets,finetune]"
+```
+
+本地 Qwen2.5-VL 模型路径由 `configs/agent-v2.example.toml` 和 `configs/finetune-lora.example.toml` 配置；如模型不在 `D:/Qwen2.5-VL-3B-Instruct`，请修改其中的 `path` 或 `model_path`。
 
 ## 常用命令
 
-屏幕感知：
+### 感知与标注
 
-    python -m gui_agent.cli inspect --output artifactsscreen.png
-    python -m gui_agent.cli overlay
+```powershell
+$env:PYTHONPATH = 'src'
+python -m gui_agent.cli inspect --output old\artifacts\screen.png
+python -m gui_agent.cli overlay
+```
 
-数据集预处理：
+### Agent 运行
 
-    python -m gui_agent.datasets.cli screenagent --input <数据目录> --output dataprocessedscreenagent.jsonl
-    python -m gui_agent.datasets.cli webarena --input <数据目录> --output dataprocessedwebarena.jsonl
-    python -m gui_agent.datasets.cli mind2web --input <数据目录> --output dataprocessedmind2web.jsonl
+预览模式不控制桌面：
 
-智能体预览模式不会控制桌面：
+```powershell
+python -m gui_agent.runtime.cli --config configs\agent-v2.example.toml --goal "打开浏览器"
+```
 
-    python -m gui_agent.runtime.cli --config configsagent-v2.example.toml --goal "打开浏览器"
+真实执行会控制当前桌面：
 
-真实执行会控制当前桌面，需显式确认：
+```powershell
+python -m gui_agent.runtime.cli --config configs\agent-v2.example.toml --goal "打开浏览器" --execute
+```
 
-    python -m gui_agent.runtime.cli --config configsagent-v2.example.toml --goal "打开浏览器" --execute
+运行记录默认写入 `old\artifacts\runtime-v2\`。
 
-系统评估：
+### 第八周浏览器 Demo
 
-    python -m gui_agent.evaluation.cli run --tasks dataweek7enchmark-tasks.json --output-dir artifactsweek7 --report week7-system-evaluation-report.md
+默认模式运行归档测试、静态检查和动作预览，不操作桌面：
 
-第七周的 90.0% 成功率来自 controlled 可控基准模式，不代表真实桌面或模型泛化性能。
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_demo_test.ps1
+```
+
+完整 Demo 会要求输入搜索主题，随后自动启动一次 Edge、搜索、筛选不同来源网页并采集信息：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_demo_test.ps1 -CaptureScreen -ExecuteDesktop -BrowsePages -PageCount 3 -PageDelay 6
+```
+
+结果写入 `old\artifacts\demo-tests\时间戳\`。真实执行前请关闭无关窗口；需要停止时，将鼠标移动到屏幕左上角，或在终端按 `Ctrl+C`。
+
+### 评估与微调
+
+```powershell
+python -m gui_agent.evaluation.cli run
+python -m gui_agent.finetune.cli train --config configs\finetune-lora.example.toml
+python -m gui_agent.finetune.cli evaluate --config configs\finetune-lora.example.toml --dataset old\data\finetune\validation.jsonl --output old\artifacts\week5\finetuned.jsonl --adapter old\models\gui-agent-lora\adapter
+```
+
+第七周 `18/20` 的结果来自固定输入和模拟后端的可控基准，不代表真实桌面或开放网页环境的泛化成功率。
 
 ## 测试
 
-    $env:PYTHONPATH='src'
-    python -m pytest -q
-    python -m ruff check src tests
+```powershell
+$env:PYTHONPATH = 'src'
+python -m pytest -q old\tests
+python -m ruff check src old\tests
+```
 
-## 本地数据与模型
+最近一次完整自动化回归记录为 `172 passed`，静态检查通过。真实桌面、浏览器弹窗和在线页面仍会受操作系统、网络和页面更新影响。
 
-原始数据、处理结果、模型权重和运行产物被 .gitignore 排除，不应提交到代码仓库。API 密钥仅使用环境变量配置。
+## 安全说明
+
+- 原始数据、模型权重、截图、日志和报告已归档，不应随意删除。
+- API 密钥只通过环境变量配置，不要写入配置文件或提交到 Git。
+- 真实执行仅应在无敏感内容的测试环境中进行。
+- 系统具有终端文本、坐标保护和动作限制，但不能替代人工确认。

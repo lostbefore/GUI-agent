@@ -1,8 +1,8 @@
 [finetune]
 model_path = "D:/Qwen2.5-VL-3B-Instruct"
-train_file = "data/finetune/train.jsonl"
-validation_file = "data/finetune/validation.jsonl"
-output_dir = "models/gui-agent-lora"
+train_file = "old/data/finetune/train.jsonl"
+validation_file = "old/data/finetune/validation.jsonl"
+output_dir = "old/models/gui-agent-lora"
 
 # 8GB ????
 lora_rank = 8

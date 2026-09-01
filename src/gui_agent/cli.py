@@ -13,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Desktop GUI perception tools")
     subparsers = parser.add_subparsers(dest="command", required=True)
     inspect = subparsers.add_parser("inspect", help="Capture, analyze and save an annotated image")
-    inspect.add_argument("--output", default="artifacts/screen.png")
+    inspect.add_argument("--output", default="old/artifacts/screen.png")
     inspect.add_argument("--scale", type=float, default=1.0)
     subparsers.add_parser("overlay", help="Analyze the desktop and display click-through boxes")
     return parser

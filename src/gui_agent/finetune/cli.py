@@ -15,7 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     prepare = commands.add_parser("prepare", help="Build train and validation JSONL files")
     prepare.add_argument("--input", action="append", required=True)
-    prepare.add_argument("--output-dir", default="data/finetune")
+    prepare.add_argument("--output-dir", default="old/data/finetune")
     prepare.add_argument("--validation-ratio", type=float, default=0.1)
     prepare.add_argument("--seed", type=int, default=42)
     prepare.add_argument("--limit", type=int)
@@ -32,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     compare = commands.add_parser("compare", help="Create comparison report")
     compare.add_argument("--baseline", required=True)
     compare.add_argument("--finetuned", required=True)
-    compare.add_argument("--output", default="docs/week5-finetune-comparison-report.md")
+    compare.add_argument("--output", default="old/docs/week5-finetune-comparison-report.md")
     return parser
 
 

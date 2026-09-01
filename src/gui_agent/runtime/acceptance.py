@@ -170,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--yes", action="store_true", help="跳过一般确认")
     parser.add_argument("--confirm-send", action="store_true", help="确认发送测试消息")
     parser.add_argument("--start-delay", type=float, default=0.0, help="切换窗口等待秒数")
-    parser.add_argument("--artifact-dir", default="artifacts/acceptance", help="记录根目录")
+    parser.add_argument("--artifact-dir", default="old/artifacts/acceptance", help="记录根目录")
     parser.add_argument("--browser", default="msedge", help="浏览器启动名")
     parser.add_argument("--query", default="GUI Agent", help="搜索内容")
     parser.add_argument("--browse-pages", action="store_true", help="自动访问搜索结果")
