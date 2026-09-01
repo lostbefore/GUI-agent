@@ -38,6 +38,7 @@ class ActionExecutor:
     def _point(value: Any, mapper: CoordinateMapper) -> tuple[int, int]:
         if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 2:
             raise ValueError("point must contain x and y")
+        # 映射截图坐标
         point = Point(round(float(value[0])), round(float(value[1])))
         if not (0 <= point.x < mapper.image_width and 0 <= point.y < mapper.image_height):
             raise ValueError("point is outside the screenshot")
@@ -88,6 +89,10 @@ class ActionExecutor:
                 if not isinstance(keys, list) or not keys:
                     raise ValueError("action requires keys")
                 self.controller.hotkey(*(str(key) for key in keys))
+            elif action == "maximize_window":
+                maximized = self.controller.maximize_active_window()
+                message = "窗口已最大化" if maximized else "窗口已全屏"
+                return ActionResult(action, True, message, parameters)
             elif action == "scroll":
                 amount = int(parameters.get("amount", 0))
                 if "x" in parameters or "y" in parameters:

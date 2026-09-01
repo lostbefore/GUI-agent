@@ -115,6 +115,7 @@ class GUIAgentRuntime:
 
     def _fit_frame(self, frame: ScreenFrame) -> ScreenFrame:
         height, width = frame.image.shape[:2]
+        # 限制截图尺寸
         pixels = width * height
         if pixels <= self.max_screen_pixels:
             return frame
@@ -123,17 +124,37 @@ class GUIAgentRuntime:
         out_height = max(1, round(height * ratio))
         image = cv2.resize(frame.image, (out_width, out_height), interpolation=cv2.INTER_AREA)
         mapper = frame.mapper
-        fitted_mapper = CoordinateMapper(out_width, out_height, mapper.screen_width, mapper.screen_height, mapper.origin_x, mapper.origin_y)
+        fitted_mapper = CoordinateMapper(
+            out_width,
+            out_height,
+            mapper.screen_width,
+            mapper.screen_height,
+            mapper.origin_x,
+            mapper.origin_y,
+        )
         return ScreenFrame(image, fitted_mapper)
 
     @staticmethod
     def _image_box(box: Box, mapper: CoordinateMapper) -> list[int]:
-        return [round((box.left - mapper.origin_x) / mapper.scale_x), round((box.top - mapper.origin_y) / mapper.scale_y), round((box.right - mapper.origin_x) / mapper.scale_x), round((box.bottom - mapper.origin_y) / mapper.scale_y)]
+        return [
+            round((box.left - mapper.origin_x) / mapper.scale_x),
+            round((box.top - mapper.origin_y) / mapper.scale_y),
+            round((box.right - mapper.origin_x) / mapper.scale_x),
+            round((box.bottom - mapper.origin_y) / mapper.scale_y),
+        ]
 
     def _screen_context(self, frame: ScreenFrame, elements: Iterable[UIElement]) -> str:
+        # 生成界面摘要
         payload = []
         for element in list(elements)[: self.max_elements]:
-            payload.append({"kind": element.kind, "text": element.text, "confidence": round(element.confidence, 3), "box": self._image_box(element.box, frame.mapper)})
+            payload.append(
+                {
+                    "kind": element.kind,
+                    "text": element.text,
+                    "confidence": round(element.confidence, 3),
+                    "box": self._image_box(element.box, frame.mapper),
+                }
+            )
         return json.dumps(payload, ensure_ascii=False)
 
     def observe(self, index: int, *, attempt: int = 0) -> Observation:
@@ -151,7 +172,13 @@ class GUIAgentRuntime:
         if elements:
             annotated = self.artifact_dir / f"step-{index:02d}{suffix}-annotated.png"
             self.perception.save_annotated(frame, elements, annotated)
-        return Observation(frame, str(screenshot), str(annotated) if annotated else None, elements, self._screen_context(frame, elements))
+        return Observation(
+            frame,
+            str(screenshot),
+            str(annotated) if annotated else None,
+            elements,
+            self._screen_context(frame, elements),
+        )
 
     @staticmethod
     def _update_plan(plan: Plan, decision: AgentDecision, result: ActionResult) -> None:
@@ -172,34 +199,80 @@ class GUIAgentRuntime:
 
     @staticmethod
     def _response_name(index: int, attempt: int) -> str:
-        return f"step-{index:02d}-response.txt" if attempt == 1 else f"step-{index:02d}-retry-{attempt - 1}-response.txt"
+        return (
+            f"step-{index:02d}-response.txt"
+            if attempt == 1
+            else f"step-{index:02d}-retry-{attempt - 1}-response.txt"
+        )
 
-    def _decide(self, goal: str, plan: Plan, observation: Observation, history: list[dict[str, Any]], index: int, attempt: int) -> AgentDecision:
+    def _decide(
+        self,
+        goal: str,
+        plan: Plan,
+        observation: Observation,
+        history: list[dict[str, Any]],
+        index: int,
+        attempt: int,
+    ) -> AgentDecision:
         self.progress.record("deciding", index=index, attempt=attempt)
         try:
-            decision = self.agent.decide(goal, plan, observation.screenshot, screen_context=observation.context, history=history)
+            decision = self.agent.decide(
+                goal,
+                plan,
+                observation.screenshot,
+                screen_context=observation.context,
+                history=history,
+            )
         except Exception:
             self._save_model_response(self._response_name(index, attempt), self.agent)
-            self.progress.record("error", index=index, attempt=attempt, message="action decision failed")
+            self.progress.record(
+                "error", index=index, attempt=attempt, message="action decision failed"
+            )
             raise
         self._save_model_response(self._response_name(index, attempt), self.agent)
         self.progress.record("decision_ready", index=index, attempt=attempt, action=decision.action)
         return decision
 
-    def _run_action(self, decision: AgentDecision, observation: Observation) -> tuple[ActionResult, bool]:
+    def _run_action(
+        self, decision: AgentDecision, observation: Observation
+    ) -> tuple[ActionResult, bool]:
         try:
             self.action_policy.validate(decision)
         except UnsafeActionError as error:
-            return ActionResult(decision.action, False, f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}", decision.parameters or {}), True
+            return ActionResult(
+                decision.action,
+                False,
+                f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}",
+                decision.parameters or {},
+            ), True
         return self.executor.execute(decision, observation.frame.mapper), False
 
     @staticmethod
-    def _history_event(index: int, attempt: int, decision: AgentDecision, result: ActionResult) -> dict[str, Any]:
-        return {"index": index, "attempt": attempt, "action": decision.action, "reason": decision.reason, "parameters": decision.parameters or {}, "success": result.success, "message": result.message}
+    def _history_event(
+        index: int, attempt: int, decision: AgentDecision, result: ActionResult
+    ) -> dict[str, Any]:
+        return {
+            "index": index,
+            "attempt": attempt,
+            "action": decision.action,
+            "reason": decision.reason,
+            "parameters": decision.parameters or {},
+            "success": result.success,
+            "message": result.message,
+        }
 
-    def _record_change(self, before: Observation, after: Observation, index: int, attempt: int) -> None:
+    def _record_change(
+        self, before: Observation, after: Observation, index: int, attempt: int
+    ) -> None:
+        # 检查界面变化
         change = self.state_checker.compare(before.frame, after.frame)
-        self.progress.record("state_checked", index=index, attempt=attempt, changed=change.changed, difference=round(change.score, 3))
+        self.progress.record(
+            "state_checked",
+            index=index,
+            attempt=attempt,
+            changed=change.changed,
+            difference=round(change.score, 3),
+        )
 
     def run(self, goal: str, *, execute: bool = False) -> ExecutionReport:
         if not goal.strip():
@@ -217,7 +290,11 @@ class GUIAgentRuntime:
             self.progress.record("error", message="task planning failed")
             raise
         self._save_model_response("plan-response.txt", getattr(self.agent, "planner", None))
-        self.progress.record("planned", steps=len(plan.steps), fallback=bool(getattr(getattr(self.agent, "planner", None), "used_fallback", False)))
+        self.progress.record(
+            "planned",
+            steps=len(plan.steps),
+            fallback=bool(getattr(getattr(self.agent, "planner", None), "used_fallback", False)),
+        )
         history: list[dict[str, Any]] = []
         events: list[ExecutionEvent] = []
 
@@ -226,12 +303,21 @@ class GUIAgentRuntime:
             try:
                 self.action_policy.validate(decision)
             except UnsafeActionError as error:
-                result = ActionResult(decision.action, False, f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}", decision.parameters or {})
+                result = ActionResult(
+                    decision.action,
+                    False,
+                    f"\u5b89\u5168\u7b56\u7565\u62d2\u7edd\u52a8\u4f5c: {error}",
+                    decision.parameters or {},
+                )
                 status = "blocked"
             else:
-                result = ActionResult(decision.action, True, "preview complete", decision.parameters or {})
+                result = ActionResult(
+                    decision.action, True, "preview complete", decision.parameters or {}
+                )
                 status = "preview"
-            events.append(ExecutionEvent(1, observation.screenshot, observation.annotated, decision, result))
+            events.append(
+                ExecutionEvent(1, observation.screenshot, observation.annotated, decision, result)
+            )
             return self._save_report(ExecutionReport(goal, "preview", status, plan, events))
 
         status = "limit_reached"
@@ -246,9 +332,25 @@ class GUIAgentRuntime:
             while True:
                 decision = self._decide(goal, plan, observation, history, index, attempt)
                 result, blocked = self._run_action(decision, observation)
-                events.append(ExecutionEvent(index, observation.screenshot, observation.annotated, decision, result, attempt))
+                events.append(
+                    ExecutionEvent(
+                        index,
+                        observation.screenshot,
+                        observation.annotated,
+                        decision,
+                        result,
+                        attempt,
+                    )
+                )
                 history.append(self._history_event(index, attempt, decision, result))
-                self.progress.record("action_finished", index=index, attempt=attempt, action=decision.action, success=result.success, message=result.message)
+                self.progress.record(
+                    "action_finished",
+                    index=index,
+                    attempt=attempt,
+                    action=decision.action,
+                    success=result.success,
+                    message=result.message,
+                )
                 if result.success:
                     self._update_plan(plan, decision, result)
                     break
@@ -258,13 +360,21 @@ class GUIAgentRuntime:
                 if not self.retry_policy.should_retry(decision, result, attempt):
                     status = "failed"
                     break
-                self.progress.record("retrying", index=index, attempt=attempt + 1, previous_action=decision.action, reason=result.message)
+                self.progress.record(
+                    "retrying",
+                    index=index,
+                    attempt=attempt + 1,
+                    previous_action=decision.action,
+                    reason=result.message,
+                )
                 if self.retry_policy.retry_delay:
                     self.sleeper(self.retry_policy.retry_delay)
                 previous_observation = observation
                 self.progress.record("observing", index=index, attempt=attempt)
                 observation = self.observe(index, attempt=attempt)
-                self.progress.record("observed", index=index, attempt=attempt, screenshot=observation.screenshot)
+                self.progress.record(
+                    "observed", index=index, attempt=attempt, screenshot=observation.screenshot
+                )
                 self._record_change(previous_observation, observation, index, attempt)
                 attempt += 1
             if not result.success:

@@ -30,7 +30,11 @@ class ProgressRecorder:
         return self._logger
 
     def record(self, stage: str, **details: Any) -> dict[str, Any]:
-        event = {"time": datetime.now().astimezone().isoformat(timespec="seconds"), "stage": stage, **details}
+        event = {
+            "time": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "stage": stage,
+            **details,
+        }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         serialized = json.dumps(event, ensure_ascii=False)
         with self.path.open("a", encoding="utf-8") as handle:

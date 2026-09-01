@@ -9,10 +9,12 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 from gui_agent.agent import AgentDecision, Plan, PlanStep
 from gui_agent.control import InputController
 from gui_agent.perception import DesktopPerception
+from gui_agent.web_research import visit_search_results
 
 from .executor import ActionExecutor
 from .orchestrator import GUIAgentRuntime
@@ -80,7 +82,7 @@ def build_task(
             name,
             "打开浏览器",
             "通过 Windows 图形界面打开浏览器",
-            "保存工作并显示 Windows 桌面",
+            "无需额外准备",
             (
                 AgentDecision("hotkey", parameters={"keys": ["win", "r"]}),
                 AgentDecision("type", parameters={"text": browser}),
@@ -93,13 +95,26 @@ def build_task(
         return AcceptanceTask(
             name,
             "搜索指定内容",
-            f"在当前浏览器搜索 {query}",
-            "打开浏览器并使窗口保持前台",
+            f"打开浏览器并搜索 {query}",
+            "无需额外准备",
             (
+                AgentDecision("hotkey", parameters={"keys": ["win", "r"]}),
+                AgentDecision("type", parameters={"text": browser}),
+                AgentDecision("press", parameters={"key": "enter"}),
+                AgentDecision("wait", parameters={"duration": 4.0}),
+                AgentDecision("maximize_window"),
+                AgentDecision("wait", parameters={"duration": 0.5}),
+                AgentDecision("press", parameters={"key": "esc"}),
+                AgentDecision("wait", parameters={"duration": 0.3}),
                 AgentDecision("hotkey", parameters={"keys": ["ctrl", "l"]}),
-                AgentDecision("type", parameters={"text": query}),
+                AgentDecision("wait", parameters={"duration": 0.5}),
+                AgentDecision(
+                    "type",
+                    parameters={"text": f"https://www.google.com/search?q={quote_plus(query)}"},
+                ),
+                AgentDecision("wait", parameters={"duration": 0.5}),
                 AgentDecision("press", parameters={"key": "enter", "step_id": 1}),
-                AgentDecision("wait", parameters={"duration": 2.0}),
+                AgentDecision("wait", parameters={"duration": 4.0}),
                 _finish(),
             ),
         )
@@ -111,7 +126,7 @@ def build_task(
             name,
             "打开指定文件",
             f"通过 Windows 图形界面打开 {path}",
-            "保存工作并显示 Windows 桌面",
+            "无需额外准备",
             (
                 AgentDecision("hotkey", parameters={"keys": ["win", "r"]}),
                 AgentDecision("type", parameters={"text": str(path)}),
@@ -154,10 +169,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--execute", action="store_true", help="执行真实动作")
     parser.add_argument("--yes", action="store_true", help="跳过一般确认")
     parser.add_argument("--confirm-send", action="store_true", help="确认发送测试消息")
-    parser.add_argument("--start-delay", type=float, default=5.0, help="切换窗口等待秒数")
+    parser.add_argument("--start-delay", type=float, default=0.0, help="切换窗口等待秒数")
     parser.add_argument("--artifact-dir", default="artifacts/acceptance", help="记录根目录")
     parser.add_argument("--browser", default="msedge", help="浏览器启动名")
     parser.add_argument("--query", default="GUI Agent", help="搜索内容")
+    parser.add_argument("--browse-pages", action="store_true", help="自动访问搜索结果")
+    parser.add_argument("--page-count", type=int, default=3, help="访问网页数量")
+    parser.add_argument("--page-wait", type=float, default=6.0, help="网页加载等待秒数")
     parser.add_argument("--file", default="README.md", help="测试文件")
     parser.add_argument("--message", default="GUI Agent 测试消息", help="测试消息")
     parser.add_argument("--analyze-screen", action="store_true", help="执行 OCR 和区域识别")
@@ -192,11 +210,19 @@ def main(argv: list[str] | None = None) -> int:
             file_path=args.file,
             message=args.message,
         )
+        if args.browse_pages and task.name != "search-content":
+            raise ValueError("网页访问只能用于搜索任务")
+        if args.browse_pages and args.page_count not in {2, 3}:
+            raise ValueError("网页数量只能是 2 或 3")
+        if args.browse_pages and args.page_wait < 0:
+            raise ValueError("网页等待时间不能为负数")
         policy = ActionPolicy()
         for decision in task.decisions:
             policy.validate(decision)
         if not args.execute:
-            print(json.dumps({"mode": "preview", **_task_payload(task)}, ensure_ascii=False, indent=2))
+            print(
+                json.dumps({"mode": "preview", **_task_payload(task)}, ensure_ascii=False, indent=2)
+            )
             return 0
         if task.name == "send-message" and not args.confirm_send:
             raise ValueError("发送消息必须添加 --confirm-send")
@@ -224,8 +250,20 @@ def main(argv: list[str] | None = None) -> int:
             action_policy=policy,
         )
         report = runtime.run(task.goal, execute=True)
-        print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
-        return 0 if report.status == "completed" else 1
+        payload = asdict(report)
+        success = report.status == "completed"
+        if args.browse_pages and success:
+            research = visit_search_results(
+                runtime.perception,
+                runtime.executor.controller,
+                runtime.artifact_dir / "web-pages",
+                page_count=args.page_count,
+                page_wait=args.page_wait,
+            )
+            payload["web_research"] = asdict(research)
+            success = sum(visit.changed for visit in research.visits) >= min(2, args.page_count)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0 if success else 1
     except KeyboardInterrupt:
         print(
             json.dumps(
@@ -236,9 +274,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 130
     except (OSError, RuntimeError, TypeError, ValueError) as error:
-        print(
-            json.dumps({"status": "error", "error": str(error)}, ensure_ascii=False, indent=2)
-        )
+        print(json.dumps({"status": "error", "error": str(error)}, ensure_ascii=False, indent=2))
         return 1
 
 

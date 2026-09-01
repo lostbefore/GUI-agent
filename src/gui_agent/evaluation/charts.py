@@ -5,7 +5,15 @@ from pathlib import Path
 from .benchmark import EvaluationSummary, MetricRow
 
 
-def _plot(rows: list[MetricRow], attribute: str, title: str, ylabel: str, path: Path, *, percent: bool = False) -> Path:
+def _plot(
+    rows: list[MetricRow],
+    attribute: str,
+    title: str,
+    ylabel: str,
+    path: Path,
+    *,
+    percent: bool = False,
+) -> Path:
     import matplotlib
 
     matplotlib.use("Agg")
@@ -25,7 +33,14 @@ def _plot(rows: list[MetricRow], attribute: str, title: str, ylabel: str, path: 
         axis.yaxis.set_major_formatter(lambda value, _: f"{value:.0%}")
     for bar, value in zip(bars, values):
         label = f"{value:.1%}" if percent else f"{value:.2f}"
-        axis.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + upper * 0.025, label, ha="center", va="bottom", fontsize=9)
+        axis.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + upper * 0.025,
+            label,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
     figure.tight_layout()
     figure.savefig(path, bbox_inches="tight")
     plt.close(figure)
@@ -36,7 +51,27 @@ def create_charts(summary: EvaluationSummary, output_dir: str | Path) -> list[Pa
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     return [
-        _plot(summary.by_difficulty, "success_rate", "Success Rate by Difficulty", "Success rate", output / "success-by-difficulty.png", percent=True),
-        _plot(summary.by_resolution, "average_duration_seconds", "Average Duration by Resolution", "Seconds", output / "duration-by-resolution.png"),
-        _plot(summary.by_application, "action_error_rate", "Action Error Rate by Application", "Action error rate", output / "error-rate-by-application.png", percent=True),
+        _plot(
+            summary.by_difficulty,
+            "success_rate",
+            "Success Rate by Difficulty",
+            "Success rate",
+            output / "success-by-difficulty.png",
+            percent=True,
+        ),
+        _plot(
+            summary.by_resolution,
+            "average_duration_seconds",
+            "Average Duration by Resolution",
+            "Seconds",
+            output / "duration-by-resolution.png",
+        ),
+        _plot(
+            summary.by_application,
+            "action_error_rate",
+            "Action Error Rate by Application",
+            "Action error rate",
+            output / "error-rate-by-application.png",
+            percent=True,
+        ),
     ]

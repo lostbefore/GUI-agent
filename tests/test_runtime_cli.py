@@ -110,9 +110,7 @@ def test_runtime_cli_waits_for_target_window(monkeypatch, capsys) -> None:
 
 
 def test_runtime_cli_reports_missing_config(capsys) -> None:
-    result = runtime_cli.main(
-        ["--config", "missing-agent.toml", "--goal", "打开浏览器"]
-    )
+    result = runtime_cli.main(["--config", "missing-agent.toml", "--goal", "打开浏览器"])
     assert result == 1
     assert '"status": "error"' in capsys.readouterr().out
 

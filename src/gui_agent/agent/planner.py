@@ -43,32 +43,48 @@ class TaskPlanner:
         self.last_response = ""
         self.used_fallback = False
 
-    def plan(self, goal: str, screenshot: str | Path | None = None, screen_context: str = "") -> Plan:
+    def plan(
+        self, goal: str, screenshot: str | Path | None = None, screen_context: str = ""
+    ) -> Plan:
         if not goal.strip():
             raise ValueError("goal must not be empty")
         prompt = f"User goal: {goal}\nMaximum steps: {self.max_steps}"
         if screen_context:
             prompt += f"\nCurrent screen elements:\n{screen_context}"
-        response = self.model.generate(prompt, [screenshot] if screenshot else (), system_prompt=PLANNER_SYSTEM_PROMPT)
+        response = self.model.generate(
+            prompt, [screenshot] if screenshot else (), system_prompt=PLANNER_SYSTEM_PROMPT
+        )
         self.last_response = response.text
         self.used_fallback = False
+        # 处理截断输出
         if is_likely_truncated(response.text):
             self.used_fallback = True
             self.last_response += "\n\n--- fallback ---\ntruncated response"
-            return Plan(goal, "\u4f7f\u7528\u7528\u6237\u76ee\u6807\u7ee7\u7eed\u6267\u884c", [PlanStep(1, goal)])
+            return Plan(
+                goal,
+                "\u4f7f\u7528\u7528\u6237\u76ee\u6807\u7ee7\u7eed\u6267\u884c",
+                [PlanStep(1, goal)],
+            )
         try:
             payload, corrected = parse_json_response(self.model, response.text)
+        # 处理异常输出
         except (TypeError, ValueError):
             self.used_fallback = True
             self.last_response += "\n\n--- fallback ---\ninvalid planner response"
-            return Plan(goal, "\u4f7f\u7528\u7528\u6237\u76ee\u6807\u7ee7\u7eed\u6267\u884c", [PlanStep(1, goal)])
+            return Plan(
+                goal,
+                "\u4f7f\u7528\u7528\u6237\u76ee\u6807\u7ee7\u7eed\u6267\u884c",
+                [PlanStep(1, goal)],
+            )
         if corrected is not None:
             self.last_response += f"\n\n--- corrected ---\n{corrected}"
         raw_steps = payload.get("steps")
         if not isinstance(raw_steps, list) or not raw_steps:
             raise ValueError("Planner response must contain a non-empty steps list")
         steps = [
-            PlanStep(int(step.get("id", index)), str(step.get("description", "")).strip(), "pending")
+            PlanStep(
+                int(step.get("id", index)), str(step.get("description", "")).strip(), "pending"
+            )
             for index, step in enumerate(raw_steps[: self.max_steps], 1)
             if isinstance(step, dict) and str(step.get("description", "")).strip()
         ]

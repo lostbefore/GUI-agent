@@ -51,7 +51,9 @@ class OutcomeExecutor:
     def execute(self, decision, mapper):
         success = next(self.outcomes)
         self.calls.append(decision.action)
-        return ActionResult(decision.action, success, "ok" if success else "not ready", decision.parameters)
+        return ActionResult(
+            decision.action, success, "ok" if success else "not ready", decision.parameters
+        )
 
 
 def test_retry_policy_limits_failures_and_never_retries_finish() -> None:
@@ -74,23 +76,43 @@ def test_screen_state_checker_detects_changed_and_same_frames() -> None:
 
 
 def test_runtime_recaptures_and_redecides_after_failed_action(tmp_path) -> None:
-    agent = QueueAgent([
-        AgentDecision("click", parameters={"x": 25, "y": 25, "step_id": 1}),
-        AgentDecision("click", parameters={"x": 26, "y": 26, "step_id": 1}),
-        AgentDecision("finish", parameters={"step_id": 2}),
-    ])
+    agent = QueueAgent(
+        [
+            AgentDecision("click", parameters={"x": 25, "y": 25, "step_id": 1}),
+            AgentDecision("click", parameters={"x": 26, "y": 26, "step_id": 1}),
+            AgentDecision("finish", parameters={"step_id": 2}),
+        ]
+    )
     perception = SequencePerception([0, 12, 12])
     executor = OutcomeExecutor([False, True, True])
     waits = []
-    runtime = GUIAgentRuntime(agent, perception, executor, artifact_dir=tmp_path, action_delay=0, max_retries=1, retry_delay=0.2, sleeper=waits.append)
+    runtime = GUIAgentRuntime(
+        agent,
+        perception,
+        executor,
+        artifact_dir=tmp_path,
+        action_delay=0,
+        max_retries=1,
+        retry_delay=0.2,
+        sleeper=waits.append,
+    )
     report = runtime.run("retry task", execute=True)
     assert report.status == "completed"
-    assert [(event.index, event.attempt, event.result.success) for event in report.events] == [(1, 1, False), (1, 2, True), (2, 1, True)]
+    assert [(event.index, event.attempt, event.result.success) for event in report.events] == [
+        (1, 1, False),
+        (1, 2, True),
+        (2, 1, True),
+    ]
     assert perception.capture_count == 3
     assert waits == [0.2]
     assert (tmp_path / "step-01-retry-1.png").exists()
-    progress = [json.loads(line) for line in (tmp_path / "progress.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert {"retrying", "state_checked", "perception_finished"}.issubset({item["stage"] for item in progress})
+    progress = [
+        json.loads(line)
+        for line in (tmp_path / "progress.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert {"retrying", "state_checked", "perception_finished"}.issubset(
+        {item["stage"] for item in progress}
+    )
     assert (tmp_path / "progress.log").exists()
 
 

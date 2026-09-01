@@ -20,7 +20,10 @@ from .report import write_report
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Week 7 GUI Agent benchmark evaluator")
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, help_text in (("run", "run deterministic controlled benchmark"), ("summarize", "summarize existing benchmark records")):
+    for name, help_text in (
+        ("run", "run deterministic controlled benchmark"),
+        ("summarize", "summarize existing benchmark records"),
+    ):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("--tasks", default="data/week7/benchmark-tasks.json")
         command.add_argument("--output-dir", default="artifacts/week7")
@@ -43,15 +46,21 @@ def main(argv: list[str] | None = None) -> int:
     summary_path = write_summary(summary, output_dir / "summary.json")
     chart_paths = create_charts(summary, output_dir / "charts")
     report_path = write_report(tasks, summary, output_dir / "charts", args.report)
-    print(json.dumps({
-        "tasks": len(tasks),
-        "records": str(records_path),
-        "summary": str(summary_path),
-        "charts": [str(path) for path in chart_paths],
-        "report": str(report_path),
-        "overall": asdict(summary.overall),
-        "execution_modes": list(summary.execution_modes),
-    }, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "tasks": len(tasks),
+                "records": str(records_path),
+                "summary": str(summary_path),
+                "charts": [str(path) for path in chart_paths],
+                "report": str(report_path),
+                "overall": asdict(summary.overall),
+                "execution_modes": list(summary.execution_modes),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 

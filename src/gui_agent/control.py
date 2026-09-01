@@ -13,6 +13,7 @@ class InputController:
     pause: float = 0.1
     failsafe: bool = True
     clipboard: Any = None
+    window_provider: Any = None
 
     def __post_init__(self) -> None:
         if self.backend is None:
@@ -33,6 +34,42 @@ class InputController:
 
     def click_box(self, box: Box, *, button: str = "left") -> None:
         self.click(*box.center, button=button)
+
+    def maximize_active_window(self) -> bool:
+        provider = self.window_provider
+        if provider is None:
+            import pygetwindow
+
+            provider = pygetwindow
+        try:
+            window = provider.getActiveWindow()
+        except Exception as error:
+            raise RuntimeError("无法读取活动窗口") from error
+        if window is None:
+            raise RuntimeError("未找到活动窗口")
+        title = str(getattr(window, "title", "")).casefold()
+        if "edge" not in title:
+            raise RuntimeError("活动窗口不是 Edge")
+        screen_width, screen_height = self.backend.size()
+        covers_screen = (
+            window.left <= 0
+            and window.top <= 0
+            and window.width >= screen_width - 8
+            and window.height >= screen_height - 8
+        )
+        if bool(getattr(window, "isMaximized", False)) or covers_screen:
+            return False
+        window.maximize()
+        return True
+
+    def open_box_in_new_tab(self, box: Box) -> None:
+        self.backend.keyDown("ctrl")
+        self.backend.keyDown("shift")
+        try:
+            self.click_box(box)
+        finally:
+            self.backend.keyUp("shift")
+            self.backend.keyUp("ctrl")
 
     def move(self, x: int, y: int, *, duration: float = 0.2) -> None:
         self._validate(x, y)

@@ -46,16 +46,25 @@ def test_scores_and_writes_comparison(tmp_path) -> None:
     baseline = score_predictions(
         [
             {"reference": '{"actions":[{"action":"click"}]}', "prediction": "bad"},
-            {"reference": '{"actions":[{"action":"type"}]}', "prediction": '{"actions":[{"action":"click"}]}'},
+            {
+                "reference": '{"actions":[{"action":"type"}]}',
+                "prediction": '{"actions":[{"action":"click"}]}',
+            },
         ]
     )
     finetuned = score_predictions(
         [
-            {"reference": '{"actions":[{"action":"click"}]}', "prediction": '{"actions":[{"action":"click"}]}'},
-            {"reference": '{"actions":[{"action":"type"}]}', "prediction": '{"actions":[{"action":"type"}]}'},
+            {
+                "reference": '{"actions":[{"action":"click"}]}',
+                "prediction": '{"actions":[{"action":"click"}]}',
+            },
+            {
+                "reference": '{"actions":[{"action":"type"}]}',
+                "prediction": '{"actions":[{"action":"type"}]}',
+            },
         ]
     )
     assert compare_results(baseline, finetuned)["first_action_accuracy_change"] == 1.0
     report = tmp_path / "report.md"
     write_comparison_report(baseline, finetuned, report)
-    assert "first" not in report.read_text(encoding="utf-8").lower()
+    assert "first" not in report.read_text(encoding="utf-8").lower()

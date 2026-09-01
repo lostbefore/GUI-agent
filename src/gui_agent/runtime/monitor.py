@@ -26,9 +26,7 @@ class ProgressOverlay(QLabel):
         self.progress_file = Path(progress_file)
         self.auto_close = auto_close
         self._closing = False
-        self.setWindowFlags(
-            Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
-        )
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
         self.setWordWrap(True)

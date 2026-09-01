@@ -39,7 +39,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-name", help="run directory name")
     parser.add_argument("--action-delay", type=float, help="delay between successful actions")
     parser.add_argument("--start-delay", type=float, help="seconds before execution")
-    parser.add_argument("--skip-analysis", action="store_true", help="disable OCR and region analysis")
+    parser.add_argument(
+        "--skip-analysis", action="store_true", help="disable OCR and region analysis"
+    )
     parser.add_argument("--ocr-gpu", action="store_true", help="enable OCR GPU")
     parser.add_argument("--show-progress", action="store_true", help="show progress overlay")
     return parser
@@ -62,13 +64,22 @@ def _wait_for_desktop(seconds: float) -> None:
         raise ValueError("start_delay must not be negative")
     if not seconds:
         return
-    print(f"\u8bf7\u5728 {seconds:g} \u79d2\u5185\u5207\u6362\u5230\u76ee\u6807\u7a97\u53e3", file=sys.stderr)
+    print(
+        f"\u8bf7\u5728 {seconds:g} \u79d2\u5185\u5207\u6362\u5230\u76ee\u6807\u7a97\u53e3",
+        file=sys.stderr,
+    )
     time.sleep(seconds)
 
 
 def _start_progress_monitor(progress_file: str | Path) -> subprocess.Popen:
     return subprocess.Popen(
-        [sys.executable, "-m", "gui_agent.runtime.monitor", "--file", str(Path(progress_file).resolve())],
+        [
+            sys.executable,
+            "-m",
+            "gui_agent.runtime.monitor",
+            "--file",
+            str(Path(progress_file).resolve()),
+        ],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -82,7 +93,13 @@ def main(argv: list[str] | None = None) -> int:
     if not goal:
         raise ValueError("goal must not be empty")
     if args.execute and not args.yes:
-        answer = input("\u5373\u5c06\u64cd\u4f5c\u5f53\u524d\u684c\u9762 \u8f93\u5165 yes \u7ee7\u7eed\uff1a").strip().lower()
+        answer = (
+            input(
+                "\u5373\u5c06\u64cd\u4f5c\u5f53\u524d\u684c\u9762 \u8f93\u5165 yes \u7ee7\u7eed\uff1a"
+            )
+            .strip()
+            .lower()
+        )
         if answer != "yes":
             print(json.dumps({"status": "cancelled"}, ensure_ascii=False, indent=2))
             return 2
@@ -92,12 +109,18 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(args.config)
         runtime_config = dict(config.get("runtime", {}))
         model = build_model(config)
-        planner = TaskPlanner(model, max_steps=int(_value(args, runtime_config, "planner_max_steps", 8)))
+        planner = TaskPlanner(
+            model, max_steps=int(_value(args, runtime_config, "planner_max_steps", 8))
+        )
         agent = DesktopAgent(model, planner=planner)
         perception = DesktopPerception(gpu=args.ocr_gpu)
-        controller = InputController(pause=float(runtime_config.get("input_pause", 0.1)), failsafe=True)
+        controller = InputController(
+            pause=float(runtime_config.get("input_pause", 0.1)), failsafe=True
+        )
         executor = ActionExecutor(controller, max_wait=float(runtime_config.get("max_wait", 10.0)))
-        artifact_dir = _artifact_dir(_value(args, runtime_config, "artifact_dir", "artifacts/runtime"), args.run_name)
+        artifact_dir = _artifact_dir(
+            _value(args, runtime_config, "artifact_dir", "artifacts/runtime"), args.run_name
+        )
         progress = ProgressRecorder(artifact_dir / "progress.jsonl")
         runtime = GUIAgentRuntime(
             agent,
@@ -107,13 +130,19 @@ def main(argv: list[str] | None = None) -> int:
             max_actions=int(_value(args, runtime_config, "max_actions", 12)),
             capture_scale=float(_value(args, runtime_config, "capture_scale", 1.0)),
             max_screen_pixels=int(_value(args, runtime_config, "max_screen_pixels", 1_048_576)),
-            analyze_screen=bool(runtime_config.get("analyze_screen", True)) and not args.skip_analysis,
+            analyze_screen=bool(runtime_config.get("analyze_screen", True))
+            and not args.skip_analysis,
             max_elements=int(runtime_config.get("max_elements", 80)),
             action_delay=float(_value(args, runtime_config, "action_delay", 0.5)),
             max_retries=int(_value(args, runtime_config, "max_retries", 2)),
             retry_delay=float(_value(args, runtime_config, "retry_delay", 1.0)),
-            state_checker=ScreenStateChecker(threshold=float(_value(args, runtime_config, "screen_change_threshold", 3.0))),
-            action_policy=ActionPolicy(block_terminal_text=bool(runtime_config.get("block_terminal_text", True)), max_text_length=int(runtime_config.get("max_text_length", 2000))),
+            state_checker=ScreenStateChecker(
+                threshold=float(_value(args, runtime_config, "screen_change_threshold", 3.0))
+            ),
+            action_policy=ActionPolicy(
+                block_terminal_text=bool(runtime_config.get("block_terminal_text", True)),
+                max_text_length=int(runtime_config.get("max_text_length", 2000)),
+            ),
             progress=progress,
         )
         if args.show_progress:
@@ -124,12 +153,26 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         if progress is not None:
             progress.record("interrupted", message="\u7528\u6237\u5df2\u505c\u6b62\u8fd0\u884c")
-        print(json.dumps({"goal": goal, "status": "interrupted", "message": "\u7528\u6237\u5df2\u505c\u6b62\u8fd0\u884c"}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {
+                    "goal": goal,
+                    "status": "interrupted",
+                    "message": "\u7528\u6237\u5df2\u505c\u6b62\u8fd0\u884c",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return 130
     except (OSError, RuntimeError, TypeError, ValueError) as error:
         if progress is not None:
             progress.record("error", message=str(error))
-        print(json.dumps({"goal": goal, "status": "error", "error": str(error)}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"goal": goal, "status": "error", "error": str(error)}, ensure_ascii=False, indent=2
+            )
+        )
         return 1
     print(json.dumps(asdict(report), ensure_ascii=False, indent=2))
     return 0 if report.status in {"preview", "completed"} else 1

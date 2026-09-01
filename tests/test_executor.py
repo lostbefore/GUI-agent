@@ -170,3 +170,11 @@ def test_executor_reraises_unexpected_backend_error() -> None:
             AgentDecision("click", parameters={"x": 10, "y": 10}),
             mapper,
         )
+
+
+def test_maximize_window_is_dispatched() -> None:
+    executor, controller, _, mapper = make_executor()
+    controller.maximize_active_window = lambda: True
+    result = executor.execute(AgentDecision("maximize_window"), mapper)
+    assert result.success
+    assert result.message == "窗口已最大化"

@@ -14,6 +14,12 @@ class FakeBackend:
     def size(self):
         return (800, 600)
 
+    def keyDown(self, key):
+        self.calls.append(("keyDown", key))
+
+    def keyUp(self, key):
+        self.calls.append(("keyUp", key))
+
     def click(self, **kwargs):
         self.calls.append(("click", kwargs))
 
@@ -129,3 +135,49 @@ def test_default_backend_is_loaded_lazily(monkeypatch) -> None:
     assert controller.backend is pyautogui
     assert pyautogui.PAUSE == 0.2
     assert pyautogui.FAILSAFE is True
+
+
+def test_open_box_in_new_tab_uses_foreground_tab_modifier() -> None:
+    backend = FakeBackend()
+    controller = InputController(backend=backend)
+    controller.open_box_in_new_tab(Box(10, 20, 30, 40))
+    assert backend.calls == [
+        ("keyDown", "ctrl"),
+        ("keyDown", "shift"),
+        ("click", {"x": 20, "y": 30, "button": "left", "clicks": 1}),
+        ("keyUp", "shift"),
+        ("keyUp", "ctrl"),
+    ]
+
+
+def test_maximize_active_window_only_when_needed() -> None:
+    class Window:
+        def __init__(self, left, top, width, height, title="New tab - Microsoft Edge"):
+            self.left = left
+            self.top = top
+            self.width = width
+            self.height = height
+            self.title = title
+            self.isMaximized = False
+            self.maximized = 0
+
+        def maximize(self):
+            self.maximized += 1
+
+    class Provider:
+        def __init__(self, window):
+            self.window = window
+
+        def getActiveWindow(self):
+            return self.window
+
+    backend = FakeBackend()
+    full = Window(0, 0, 800, 600)
+    controller = InputController(backend=backend, window_provider=Provider(full))
+    assert controller.maximize_active_window() is False
+    assert full.maximized == 0
+
+    partial = Window(100, 100, 600, 400)
+    controller = InputController(backend=backend, window_provider=Provider(partial))
+    assert controller.maximize_active_window() is True
+    assert partial.maximized == 1

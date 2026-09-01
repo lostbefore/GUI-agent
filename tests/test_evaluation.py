@@ -56,7 +56,7 @@ def test_charts_report_and_records_are_created(tmp_path) -> None:
     assert all(path.is_file() and path.stat().st_size > 5_000 for path in charts)
     report = write_report(tasks, summary, tmp_path / "charts", tmp_path / "report.md")
     text = report.read_text(encoding="utf-8")
-    assert "20 desktop GUI benchmark tasks" in text
+    assert "20 项桌面 GUI 基准任务" in text
     assert "Ui-TARS" in text
     assert "charts/success-by-difficulty.png" in text
 
@@ -64,7 +64,15 @@ def test_charts_report_and_records_are_created(tmp_path) -> None:
 def test_cli_run_generates_all_week7_artifacts(tmp_path, capsys) -> None:
     report = tmp_path / "week7-report.md"
     result = main(
-        ["run", "--tasks", str(TASKS), "--output-dir", str(tmp_path / "artifacts"), "--report", str(report)]
+        [
+            "run",
+            "--tasks",
+            str(TASKS),
+            "--output-dir",
+            str(tmp_path / "artifacts"),
+            "--report",
+            str(report),
+        ]
     )
     assert result == 0
     payload = json.loads(capsys.readouterr().out)
@@ -76,5 +84,12 @@ def test_cli_run_generates_all_week7_artifacts(tmp_path, capsys) -> None:
 def test_record_validation_rejects_too_many_errors() -> None:
     with pytest.raises(ValueError, match="cannot exceed"):
         BenchmarkRecord.from_dict(
-            {"task_id": "T01", "success": False, "duration_seconds": 1, "action_attempts": 1, "action_errors": 2, "retries": 0}
+            {
+                "task_id": "T01",
+                "success": False,
+                "duration_seconds": 1,
+                "action_attempts": 1,
+                "action_errors": 2,
+                "retries": 0,
+            }
         )

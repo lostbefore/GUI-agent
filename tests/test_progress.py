@@ -25,7 +25,15 @@ def test_progress_reader_skips_invalid_last_line(tmp_path) -> None:
 
 def test_progress_formatter_describes_current_step() -> None:
     assert "\u7b49\u5f85\u8fd0\u884c" in format_progress(None)
-    text = format_progress({"stage": "action_finished", "index": 3, "action": "hotkey", "status": "completed", "message": "\u6267\u884c\u6210\u529f"})
+    text = format_progress(
+        {
+            "stage": "action_finished",
+            "index": 3,
+            "action": "hotkey",
+            "status": "completed",
+            "message": "\u6267\u884c\u6210\u529f",
+        }
+    )
     assert "\u7b2c3\u6b65" in text
     assert "hotkey" in text
     assert "completed" in text

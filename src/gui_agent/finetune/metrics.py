@@ -117,9 +117,11 @@ def write_comparison_report(
             "",
             conclusion,
             "",
-            ("\\u5fae\\u8c03\\u524d\\u540e\\u4f7f\\u7528\\u76f8\\u540c\\u9a8c\\u8bc1\\u96c6\\u3001\\u751f\\u6210\\u53c2\\u6570\\u548c\\u8bc4\\u5206\\u89c4\\u5219\\u3002"
-             "\\u4ee5\\u4e0a\\u53d8\\u5316\\u7528\\u4e8e\\u5224\\u65ad LoRA \\u5fae\\u8c03\\u5bf9 GUI \\u52a8\\u4f5c\\u751f\\u6210\\u7684\\u5f71\\u54cd\\u3002"),
+            (
+                "\\u5fae\\u8c03\\u524d\\u540e\\u4f7f\\u7528\\u76f8\\u540c\\u9a8c\\u8bc1\\u96c6\\u3001\\u751f\\u6210\\u53c2\\u6570\\u548c\\u8bc4\\u5206\\u89c4\\u5219\\u3002"
+                "\\u4ee5\\u4e0a\\u53d8\\u5316\\u7528\\u4e8e\\u5224\\u65ad LoRA \\u5fae\\u8c03\\u5bf9 GUI \\u52a8\\u4f5c\\u751f\\u6210\\u7684\\u5f71\\u54cd\\u3002"
+            ),
             "",
         ]
     )
-    Path(output).write_text(text, encoding="utf-8")
+    Path(output).write_text(text, encoding="utf-8")

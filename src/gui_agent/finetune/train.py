@@ -20,7 +20,7 @@ def _dependencies() -> dict[str, Any]:
             TrainingArguments,
         )
     except ImportError as error:
-        raise RuntimeError("??????????pip install -e \".[finetune]\"") from error
+        raise RuntimeError('??????????pip install -e ".[finetune]"') from error
     return {
         "torch": torch,
         "LoraConfig": LoraConfig,
@@ -44,7 +44,9 @@ def _batch(processor: Any, examples: list[dict[str, Any]], max_length: int) -> d
         for example in examples
     ]
     texts = [processor.apply_chat_template(message, tokenize=False) for message in messages]
-    batch = processor(text=texts, padding=True, truncation=True, max_length=max_length, return_tensors="pt")
+    batch = processor(
+        text=texts, padding=True, truncation=True, max_length=max_length, return_tensors="pt"
+    )
     labels = batch["input_ids"].clone()
     labels[batch["attention_mask"] == 0] = -100
     batch["labels"] = labels

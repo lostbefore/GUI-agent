@@ -35,12 +35,7 @@ class ActionPolicy:
         if decision.action in {"click", "double_click", "context_open"}:
             x = parameters.get("x")
             y = parameters.get("y")
-            if (
-                isinstance(x, (int, float))
-                and isinstance(y, (int, float))
-                and x <= 20
-                and y <= 20
-            ):
+            if isinstance(x, (int, float)) and isinstance(y, (int, float)) and x <= 20 and y <= 20:
                 raise UnsafeActionError("动作位于左上角保护区")
         if decision.action != "type":
             return

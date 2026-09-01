@@ -207,7 +207,9 @@ def _metric(group: str, records: list[BenchmarkRecord]) -> MetricRow:
     )
 
 
-def summarize(tasks: Iterable[BenchmarkTask], records: Iterable[BenchmarkRecord]) -> EvaluationSummary:
+def summarize(
+    tasks: Iterable[BenchmarkTask], records: Iterable[BenchmarkRecord]
+) -> EvaluationSummary:
     task_list = list(tasks)
     record_list = list(records)
     task_by_id = {task.task_id: task for task in task_list}
@@ -216,7 +218,11 @@ def summarize(tasks: Iterable[BenchmarkTask], records: Iterable[BenchmarkRecord]
     unknown = [record.task_id for record in record_list if record.task_id not in task_by_id]
     if unknown:
         raise ValueError(f"Unknown benchmark task identifiers: {', '.join(sorted(set(unknown)))}")
-    duplicates = [task_id for task_id in task_by_id if sum(record.task_id == task_id for record in record_list) > 1]
+    duplicates = [
+        task_id
+        for task_id in task_by_id
+        if sum(record.task_id == task_id for record in record_list) > 1
+    ]
     if duplicates:
         raise ValueError(f"Multiple records for task identifiers: {', '.join(duplicates)}")
     missing = sorted(set(task_by_id) - {record.task_id for record in record_list})

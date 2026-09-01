@@ -26,11 +26,7 @@ class RetryPolicy:
 
     def should_retry(self, decision: AgentDecision, result: ActionResult, attempt: int) -> bool:
         """只对未执行成功的普通动作重新感知并决策"""
-        return (
-            not result.success
-            and decision.action != "finish"
-            and attempt <= self.max_retries
-        )
+        return not result.success and decision.action != "finish" and attempt <= self.max_retries
 
 
 @dataclass(frozen=True, slots=True)

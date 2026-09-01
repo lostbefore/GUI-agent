@@ -35,14 +35,29 @@ class AgentDecision:
 
 
 class DesktopAgent:
-    allowed_actions = frozenset({"click", "double_click", "context_open", "type", "press", "hotkey", "scroll", "drag", "wait", "finish"})
+    allowed_actions = frozenset(
+        {
+            "click",
+            "double_click",
+            "context_open",
+            "type",
+            "press",
+            "hotkey",
+            "scroll",
+            "drag",
+            "wait",
+            "finish",
+        }
+    )
 
     def __init__(self, model: VisionModel, planner: TaskPlanner | None = None) -> None:
         self.model = model
         self.planner = planner or TaskPlanner(model)
         self.last_response = ""
 
-    def plan(self, goal: str, screenshot: str | Path | None = None, screen_context: str = "") -> Plan:
+    def plan(
+        self, goal: str, screenshot: str | Path | None = None, screen_context: str = ""
+    ) -> Plan:
         return self.planner.plan(goal, screenshot, screen_context)
 
     @staticmethod
@@ -57,14 +72,33 @@ class DesktopAgent:
                 return "hotkey", normalized
         return action, parameters
 
-    def decide(self, goal: str, plan: Plan, screenshot: str | Path, *, screen_context: str = "", history: Sequence[dict[str, Any]] = ()) -> AgentDecision:
+    def decide(
+        self,
+        goal: str,
+        plan: Plan,
+        screenshot: str | Path,
+        *,
+        screen_context: str = "",
+        history: Sequence[dict[str, Any]] = (),
+    ) -> AgentDecision:
         try:
             elements: Any = json.loads(screen_context) if screen_context else []
         except json.JSONDecodeError:
             elements = screen_context
         active_step = plan.next_pending_step()
-        context = json.dumps({"goal": goal, "active_step": asdict(active_step) if active_step else None, "plan": [asdict(step) for step in plan.steps], "screen_elements": elements, "action_history": list(history)}, ensure_ascii=False)
-        response = self.model.generate(f"Current task state:\n{context}", [screenshot], system_prompt=ACTION_SYSTEM_PROMPT)
+        context = json.dumps(
+            {
+                "goal": goal,
+                "active_step": asdict(active_step) if active_step else None,
+                "plan": [asdict(step) for step in plan.steps],
+                "screen_elements": elements,
+                "action_history": list(history),
+            },
+            ensure_ascii=False,
+        )
+        response = self.model.generate(
+            f"Current task state:\n{context}", [screenshot], system_prompt=ACTION_SYSTEM_PROMPT
+        )
         self.last_response = response.text
         payload, corrected = parse_json_response(self.model, response.text)
         if corrected is not None:
@@ -80,5 +114,7 @@ class DesktopAgent:
         try:
             from langchain_core.runnables import RunnableLambda
         except ImportError as error:
-            raise ImportError('Install agent dependencies with: pip install -e ".[agent]"') from error
+            raise ImportError(
+                'Install agent dependencies with: pip install -e ".[agent]"'
+            ) from error
         return RunnableLambda(lambda request: self.plan(str(request["goal"])))

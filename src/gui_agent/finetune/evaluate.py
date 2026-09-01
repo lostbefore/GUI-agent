@@ -16,7 +16,7 @@ def _dependencies() -> tuple[Any, Any, Any, Any, Any]:
         from peft import PeftModel
         from transformers import AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
     except ImportError as error:
-        raise RuntimeError("??????????pip install -e \".[finetune]\"") from error
+        raise RuntimeError('??????????pip install -e ".[finetune]"') from error
     return torch, PeftModel, AutoModelForImageTextToText, AutoProcessor, BitsAndBytesConfig
 
 
@@ -51,11 +51,15 @@ def evaluate_model(
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": example.instruction},
             ]
-            text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            text = processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
             inputs = processor(text=[text], return_tensors="pt")
             device = next(model.parameters()).device
             inputs = {key: value.to(device) for key, value in inputs.items()}
-            generated = model.generate(**inputs, max_new_tokens=int(config.get("eval_max_tokens", 160)))
+            generated = model.generate(
+                **inputs, max_new_tokens=int(config.get("eval_max_tokens", 160))
+            )
             prediction = processor.batch_decode(
                 generated[:, inputs["input_ids"].shape[1] :], skip_special_tokens=True
             )[0].strip()

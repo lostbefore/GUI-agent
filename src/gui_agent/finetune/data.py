@@ -9,7 +9,7 @@ from typing import Any
 
 SYSTEM_PROMPT = (
     "You are a desktop GUI agent. Return JSON actions only. "
-    "Use {\"actions\":[{\"action\":\"...\",\"target\":\"...\",\"value\":\"...\"}]}."
+    'Use {"actions":[{"action":"...","target":"...","value":"..."}]}.'
 )
 
 
@@ -106,9 +106,10 @@ def build_sft_dataset(
     output.mkdir(parents=True, exist_ok=True)
     counts = {"train": 0, "validation": 0, "skipped": 0}
     seen: set[str] = set()
-    with (output / "train.jsonl").open("w", encoding="utf-8") as train, (
-        output / "validation.jsonl"
-    ).open("w", encoding="utf-8") as validation:
+    with (
+        (output / "train.jsonl").open("w", encoding="utf-8") as train,
+        (output / "validation.jsonl").open("w", encoding="utf-8") as validation,
+    ):
         for record in _records(inputs):
             source_split = str(record.get("split", "unknown")).strip().lower()
             if source_split not in allowed_splits:
@@ -148,4 +149,4 @@ def load_examples(path: str | Path) -> list[SFTExample]:
     try:
         return [SFTExample(**record) for record in _records([path])]
     except TypeError as error:
-        raise ValueError(f"Invalid SFT example in {path}") from error
+        raise ValueError(f"Invalid SFT example in {path}") from error

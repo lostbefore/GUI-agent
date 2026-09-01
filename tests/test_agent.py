@@ -144,22 +144,16 @@ def test_agent_rejects_unsupported_action(tmp_path) -> None:
 def test_agent_accepts_context_open(tmp_path) -> None:
     model = QueueModel('{"action":"context_open","x":20,"y":30,"reason":"打开快捷方式"}')
     agent = DesktopAgent(model)
-    plan = TaskPlanner(QueueModel('{"steps":[{"id":1,"description":"打开"}]}')).plan(
-        "打开 Edge"
-    )
+    plan = TaskPlanner(QueueModel('{"steps":[{"id":1,"description":"打开"}]}')).plan("打开 Edge")
     decision = agent.decide("打开 Edge", plan, tmp_path / "screen.png")
     assert decision.action == "context_open"
     assert decision.parameters == {"x": 20, "y": 30}
 
 
 def test_agent_normalizes_combined_hotkey_field(tmp_path) -> None:
-    model = QueueModel(
-        '{"action":"context_open","step_id":1,"x":10,"y":10,"key":"win+r"}'
-    )
+    model = QueueModel('{"action":"context_open","step_id":1,"x":10,"y":10,"key":"win+r"}')
     agent = DesktopAgent(model)
-    plan = TaskPlanner(QueueModel('{"steps":[{"id":1,"description":"打开运行"}]}')).plan(
-        "按Win+R"
-    )
+    plan = TaskPlanner(QueueModel('{"steps":[{"id":1,"description":"打开运行"}]}')).plan("按Win+R")
     decision = agent.decide("按Win+R", plan, tmp_path / "screen.png")
     assert decision.action == "hotkey"
     assert decision.parameters == {"keys": ["win", "r"], "step_id": 1}

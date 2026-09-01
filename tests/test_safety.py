@@ -33,9 +33,7 @@ def test_policy_allows_gui_text_and_paths() -> None:
 
 def test_policy_limits_text_length() -> None:
     with pytest.raises(UnsafeActionError, match="长度"):
-        ActionPolicy(max_text_length=3).validate(
-            AgentDecision("type", parameters={"text": "1234"})
-        )
+        ActionPolicy(max_text_length=3).validate(AgentDecision("type", parameters={"text": "1234"}))
 
 
 def test_policy_rejects_invalid_limit() -> None:
@@ -51,6 +49,4 @@ def test_policy_ignores_non_text_and_missing_text() -> None:
 
 def test_policy_blocks_top_left_pointer_actions() -> None:
     with pytest.raises(UnsafeActionError, match="左上角"):
-        ActionPolicy().validate(
-            AgentDecision("context_open", parameters={"x": 10, "y": 10})
-        )
+        ActionPolicy().validate(AgentDecision("context_open", parameters={"x": 10, "y": 10}))
